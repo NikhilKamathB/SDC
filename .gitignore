@@ -1,0 +1,6 @@
+**/__carla_simulator_zip__/**
+**/AdditionalMaps_0.9.10/**
+**/CARLA_0.9.10/**
+!/CARLA_0.9.10/PythonAPI/
+!/CARLA_0.9.10/PythonAPI/sdc/
+!/CARLA_0.9.10/PythonAPI/sdc/**
