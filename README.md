@@ -5,7 +5,7 @@
 
 ## Setup.
 <p style="text-align: justify;">
-&nbsp;&nbsp;&nbsp;&nbsp; Refer to the <a href="https://carla.readthedocs.io/en/stable/getting_started/">Carla simulator document</a> to setup the simulator on your system. Once the the setup is complete install the necessary libraries and place the clone repository in '/CARLA_version/PythonAPI/' directory. Otherwise use the Dockerfile to setup the simulator.
+&nbsp;&nbsp;&nbsp;&nbsp; Refer to the <a href="https://carla.readthedocs.io/en/stable/getting_started/">Carla simulator document</a> to setup the simulator on your system. Once the the setup is complete install the necessary libraries and place the clone repository in '/CARLA_version/PythonAPI/' directory.
 </p>
 
 ## Methodology.
@@ -18,6 +18,9 @@
         __DATA__
     </li>
     <li>
+        __LOGS__
+    </li>
+    <li>
         __MODELS__
     </li>
     <li>
@@ -27,7 +30,7 @@
         SIMULATION_SCRIPTS
     </li>
     <li>
-        Dockerfile
+        config.py
     </li>
     <li>
         main.py

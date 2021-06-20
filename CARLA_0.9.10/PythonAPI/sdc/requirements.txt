@@ -1,0 +1,12 @@
+networkx
+distro
+future
+numpy
+pandas
+matplotlib
+seaborn
+opencv-python
+torch
+torchvision
+pygame
+open3d
