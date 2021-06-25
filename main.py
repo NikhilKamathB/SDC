@@ -2,8 +2,13 @@ import argparse
 from config import config
 from DATA_SCRIPTS.run import Run as data_run
 
-def main():
-    pass
+def main(args=None) -> None:
+    if args.data:
+            run = data_run()
+    elif args.simulation:
+        pass
+    else:
+        print("Either --data (-d) or --simulation (-s) must be set. Both can't be unset.")
 
 if __name__=="__main__":
 
@@ -22,10 +27,4 @@ if __name__=="__main__":
     
     # Ramification of control.
     args = parser.parse_args()
-    if args.data:
-        if args.car_pose:
-            run = data_run()
-    elif args.simulation:
-        pass
-    else:
-        print("Either --data (-d) or --simulation (-s) must be set. Both can't be unset.")
+    main(args=args)
