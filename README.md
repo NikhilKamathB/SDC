@@ -43,4 +43,5 @@
 
 ## How to run?
 ## Results.
-## References..
+## References.
+* [Capture data while manually controlling the agent.](https://github.com/carla-simulator/carla/blob/master/PythonAPI/examples/manual_control.py)

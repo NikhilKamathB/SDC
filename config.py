@@ -16,3 +16,6 @@ class Config:
 
     # Logs handlers.
     LOGS_DIR = BASE_DIR / "__LOGS__"
+
+
+config = Config()
