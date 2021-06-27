@@ -4,7 +4,7 @@ from DATA_SCRIPTS.run import Run as data_run
 
 def main(args=None) -> None:
     if args.data:
-            run = data_run()
+        run = data_run()
     elif args.simulation:
         pass
     else:
