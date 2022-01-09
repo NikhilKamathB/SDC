@@ -13,32 +13,15 @@
 ## Directories and files.
 <p style="text-align: justify;">
 &nbsp;&nbsp;&nbsp;&nbsp; The repository has two main wings: the data generator and the simulation scripts. The control flows from the 'main.py' in the repository's root directory to either of these branched depending upon the command line arguments passed during execution. Files and folders are organized as follows:
-<ul>
-    <li>
-        __DATA__
-    </li>
-    <li>
-        __LOGS__
-    </li>
-    <li>
-        __MODELS__
-    </li>
-    <li>
-        DATA_SCRIPTS
-    </li>
-    <li>
-        SIMULATION_SCRIPTS
-    </li>
-    <li>
-        config.py
-    </li>
-    <li>
-        main.py
-    </li>
-    <li>
-        requirements.txt
-    </li>
-</ul>
+
+* DATA
+* LOGS
+* MODELS
+* DATA_SCRIPTS
+* SIMULATION_SCRIPTS
+* config.py
+* main.py
+* requirements.txt
 </p>
 
 ## How to run?

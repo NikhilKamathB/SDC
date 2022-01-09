@@ -9,4 +9,4 @@ opencv-python
 torch
 torchvision
 pygame
-open3d
+open3d-python

@@ -67,9 +67,9 @@ class HelpText:
     def __init__(self, font=None, width=None, height=None) -> None:
         self.font = font
         lines = __doc__.split('\n')
+        self.line_space = 18
         self.dim = (780, len(lines) * self.line_space + 12)
         self.pos = (0.5 * width - 0.5 * self.dim[0], 0.5 * height - 0.5 * self.dim[1])
-        self.line_space = 18
         self.seconds_left = 0
         self.surface = pygame.Surface(self.dim)
         self.surface.fill((0, 0, 0, 0))
@@ -219,7 +219,7 @@ class World:
 
     def __init__(self, world=None, hud=None, args=None) -> None:
         self.world, self.hud, self.args = world, hud, args
-        self.rolename = self.args.rolename
+        self.rolename = self.args['role_name']
         try:
             self.map = self.world.get_map()
         except RuntimeError as e:
@@ -228,8 +228,8 @@ class World:
         self.player, self.camera_manager = None, None
         self._weather_presets = self.find_weather_presets()
         self._weather_index = 0
-        self._actor_filter = self.args.vehicle_filter
-        self._gamma = self.args.gamma
+        self._actor_filter = self.args['vehicle_filter']
+        self._gamma = self.args['gamma']
         self.recording_enabled = False
         self.restart()
         self.world.on_tick(self.hud.on_world_tick)
@@ -239,6 +239,12 @@ class World:
         name = lambda x: ' '.join(m.group(0) for m in rgx.finditer(x))
         presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
         return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
+    
+    def tick(self, clock=None) -> None:
+        self.hud.tick(self, clock)
+
+    def render(self, display=None) -> None:
+        self.hud.render(display=display)
     
     def restart(self) -> None:
         # Define speed intities if necessary.
@@ -312,10 +318,10 @@ class Run():
     This class enables the vehicle's free drive and data capture.
     '''
 
-    def __init__(self, json_path=None, output_dir=None) -> None:
-        assert json_path is not None or output_dir is not None; "Path to the configuration file / output directory must be provided."
-        self.json_path = json_path
-        self.output_dir = output_dir
+    def __init__(self, args=None) -> None:
+        assert args is not None; "Args argument must be provided."
+        self.json_path = args.configuration
+        self.output_dir = args.output_dir
     
     def game_loop(self, args=None) -> None:
         # Initialize pygame and fonts.
@@ -324,18 +330,18 @@ class Run():
         world = None
         try:
             # Initialize client, hud, world and controller and run game.
-            client = carla.Client(host=args.host, port=args.port, worker_threads=args.worker_threads)
-            client.set_timeout(seconds=args.network_timeout)
-            display = pygame.display.set_mode(size=(args.width, args.height), flags=pygame.HWSURFACE | pygame.DOUBLEBUF)
-            hud = HUD(width=args.width, height=args.height)
+            client = carla.Client(host=args['host'], port=args['port'], worker_threads=args['worker_threads'])
+            client.set_timeout(seconds=args['network_timeout'])
+            display = pygame.display.set_mode(size=(args['width'], args['height']), flags=pygame.HWSURFACE | pygame.DOUBLEBUF)
+            hud = HUD(width=args['width'], height=args['height'])
             world = World(world=client.get_world(), hud=hud, args=args)
-            controller = KeyboardControl(world=world, autopilot=args.autopilot)
+            controller = KeyboardControl(world=world, autopilot=args['autopilot'])
             clock = pygame.time.Clock()
             while True:
                 clock.tick_busy_loop(60)
                 if controller.parse_events(client=client, world=world, clock=clock):
                     return
-                world.tick(clock)
+                world.tick(clock=clock)
                 world.render(display)
                 pygame.display.flip()
         except Exception as e :
