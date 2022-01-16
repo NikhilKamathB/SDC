@@ -10,3 +10,4 @@ torch
 torchvision
 pygame
 open3d-python
+carla==0.9.12
