@@ -1,13 +1,7 @@
 networkx
 distro
 future
-numpy
-pandas
-matplotlib
-seaborn
-opencv-python
-torch
-torchvision
 pygame
+numpy
 open3d-python
-carla==0.9.12
+carla~=0.9.15
