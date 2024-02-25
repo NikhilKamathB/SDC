@@ -5,22 +5,10 @@ Self-driving cars have been one of the most challenging and fascinating fields o
 Design a Level 4 Autonomous Vehicle and serve as a platform for another project **SimPan**.
 
 ## Prerequisites.
-<p style="text-align: justify;">
-&nbsp;&nbsp;&nbsp;&nbsp; Refer to the <a href="https://carla.readthedocs.io/en/stable/">Carla simulator document</a> to get to know about the Carla simulator. Install <a href="https://docs.docker.com">docker</a> and have it running. Once you are done with this, you may clone this repository. Follow the <strong>Setup</strong> section to have the Carla simulator up and running.
-</p>
+Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/) to get to know about the Carla simulator. Install [docker](https://docs.docker.com) and have it running. Once you are done with this, you may clone this repository. Follow the **Setup** section to have the Carla simulator up and running.
 
 ## Setup.
 * Install Nvidia drivers.
-<!-- * Refer [1](https://carla.readthedocs.io/en/latest/start_quickstart/) and [2](https://carla.readthedocs.io/en/latest/adv_rendering_options/), then run:
-```
-sudo apt-get install libxerces-c3.2 libomp5 xserver-xorg mesa-utils libvulkan1
-
-sudo nvidia-xconfig --preserve-busid -a --virtual=1280x1024
-
-export VK_ICD_FILENAMES="/usr/share/vulkan/icd.d/nvidia_icd.json"
-
-./CarlaUE4.sh -quality-level=low
-``` -->
 * For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build_docker/) doc. Remember to install Nvidia container toolkit.
 ```
 docker pull carlasim/carla:<tag>      # eg: carlasim/carla:0.9.15 
@@ -41,21 +29,29 @@ SDC Repo.
     |- processed (holds processed information)
 |- logs (logging of information will be done here; logging must be in the following format `<timestamp>/log_<suffix>.<extension>`)
 |- src (driving code goes)
-    |- data (contains scripts to generate/process/store data)
-|- config.json (any configuration, specific to the player, Carla server, etc, will be declared here)
+    |- data (contains scripts to generate/process/store data from the Carla environment)
 |- main.py (contains the driver code)
-|- data_generate.sh (bash script to open pygame and generate data)
 |- requirements.txt (holds dependencies)
 ```
 
 ## Tasks.
-- [ ] Data acquisition.
-    - [ ] Automate data collection over pygame using different sensors
-    - [ ] Code storing scripts
+- [ ] Define handlers to spawn/activate/configure entities
+- [ ] Data acquisition
 - [ ] High level motion planning
 - [ ] State estimation and localization
-- [ ] Low level motion planning
 - [ ] Build perception stack
+- [ ] Low level motion planning
+
+## Notes
+* As much as possible, try to stick to this template. Any improvement/suggestion to this organization is always welcome.
+* Let us try to write a clean code. Comment where ever necessary so that others can understand and pickup easily.
+Jupyter notebooks must contain minimal code. What it means is, if you have a big function, the implementation falls into the appropriate src folder and this funciton gets called in the notebook. This stands for classes as well.
+* If there is anything that you feel is important, please mention them under the appropriate Tasks subheadings.
+* Any tasks that you take, see to it that you are not in the main/master branch. Checkout the main/master branch and start from there. Once done, create a pull request.
+* To maintain consistency, the naming of all branches except main/master must be done as follows: `<property>/<branch-name>`. The property represents, the type of commit - it may be addition of features, bug fixes, etc. For example, if you are adding a new camera model to the player, the branch name would be `[feature]/addition-of-camera-module`.
 
 ## Environment Variables
-* GOOGLE_APPLICATION_CREDENTIALS
+Any environment variables used in this project must be mentioned here.
+
+## References
+Any references must be mentioned here.
