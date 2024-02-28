@@ -3,5 +3,7 @@ distro
 future
 pygame
 numpy
+pydantic
 open3d-python
+pytest
 carla~=0.9.15

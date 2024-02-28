@@ -2,7 +2,7 @@
 Self-driving cars have been one of the most challenging and fascinating fields of study in automation. The main motive behind such a concept is to provide effortless and comfortable driving. The evolution of this discipline has pushed many researchers and enthusiasts to build automobiles that achieve level five autonomy. This repository aims to implement a simulated car with level four autonomy. Inspired by the timeline of self-driving cars and ever-growing technologies, the work has adopted the Carla simulator as a base for formulating the problem statement. It is open-source and offers various functionalities one can think about in relation to self-driving cars (SDC). This repository branches out to address concepts of visual perception, state estimation and localization, and motion planning. A previous version of this project can be found [here](https://drive.google.com/file/d/1IXyGhBM2OLqZS4HTRtfFpyoeYW-f11aI/view?usp=share_link). This version is part of a continuous development effort.
 
 ## Objective
-Design a Level 4 Autonomous Vehicle and serve as a platform for another project **SimPan**.
+Design a Level 4 Autonomous Vehicle and serve as a platform for another project **SimPan**. **SimPan** would be designed to serve as an annotation tool (labeling, segmentation, event manipulation, etc), scenario augmentation, language guided modeling with analytical plugins. 
 
 ## Prerequisites.
 Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/) to get to know about the Carla simulator. Install [docker](https://docs.docker.com) and have it running. Once you are done with this, you may clone this repository. Follow the **Setup** section to have the Carla simulator up and running.
@@ -19,6 +19,11 @@ docker run --rm -it -d --privileged --gpus all --net=host --name carla-server ca
 ```
 pip install -r requirements.txt
 ```
+* Note that if you want to run the python client (getting pygame window up in Mac) from your Mac, then you have to setup X11 Forwarding. Do the follwing for setting this up:
+    * Download and install XQuartz from [here](https://www.xquartz.org/).
+    * After installation, log out and log back in to ensure XQuartz starts properly.
+    * Upon opening the XQuartz terimal, run `ssh -Y username@remote-server` for secure connection. You may then simply run your script.
+    * The downside is that the visualization and communication will have a noticable latency.
 
 ## Folder Structure
 ```
@@ -29,7 +34,11 @@ SDC Repo.
     |- processed (holds processed information)
 |- logs (logging of information will be done here; logging must be in the following format `<timestamp>/log_<suffix>.<extension>`)
 |- src (driving code goes)
+    |- base (holds the definition of handlers like actors, ego vehivles, etc)
     |- data (contains scripts to generate/process/store data from the Carla environment)
+    |- model (contains pydantic and enums models that define attributes for the enviroment)
+    |- uitls (untilities are defined here)
+|- test (All test cases are defined here)
 |- main.py (contains the driver code)
 |- requirements.txt (holds dependencies)
 ```
@@ -51,7 +60,10 @@ Jupyter notebooks must contain minimal code. What it means is, if you have a big
 * To maintain consistency, the naming of all branches except main/master must be done as follows: `<property>/<branch-name>`. The property represents, the type of commit - it may be addition of features, bug fixes, etc. For example, if you are adding a new camera model to the player, the branch name would be `[feature]/addition-of-camera-module`.
 
 ## Environment Variables
-Any environment variables used in this project must be mentioned here.
+```
+export HOSTNAME="localhost"
+export PORT="2000"
+```
 
 ## References
-Any references must be mentioned here.
+* [Carla Simulator](https://carla.org)
