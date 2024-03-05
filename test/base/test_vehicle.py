@@ -2,33 +2,19 @@
 # Define test suit for the Vehicle class
 ##########################################################################################################
 
-import os
 import carla
 import pytest
+from typing import Callable
+from test.utils import init_client
 from src.base.vehicle import Vehicle
 from src.model.enum import Gen1VehicleType, Gen2VehicleType, VehicleLightState
 
-
-@pytest.fixture
-def init_client() -> carla.World:
-    """
-    Initialize the client for the test
-    Return: carla.World
-    """
-    hostname = os.getenv("HOSTNAME", "localhost")
-    port = int(os.getenv("PORT", "2000"))
-    client = carla.Client(hostname, port)
-    client.set_timeout(2.0)
-    world = client.get_world()
-    return world
-
-
 class TestVehicle:
 
-    def run_test(self, world, blueprint_id) -> None:
+    def run_test(self, world: carla.World, blueprint_id: str) -> None:
         """
         Run the test for the vehicle class
-        Input: world: carla.World, blueprint_id: carla.ActorBlueprint
+        Input: world: carla.World, blueprint_id: str
         """
         blueprint_id = blueprint_id.value
         vehicle = Vehicle(world, blueprint_id=blueprint_id)
@@ -41,10 +27,10 @@ class TestVehicle:
         vehicle.destroy()
 
     @pytest.mark.parametrize("blueprint_id", Gen1VehicleType)
-    def test_gen1_vehicle_spawn(self, init_client, blueprint_id):
+    def test_gen1_vehicle_spawn(self, init_client: Callable, blueprint_id: str):
         """
         Test the spawning of the generation 1 vehicle
-        Input: init_client: fixture returned carla.World, blueprint_id: blueprint id
+        Input: init_client: fixture returned carla.World, blueprint_id: str
         """
         try:
             self.run_test(init_client, blueprint_id)
@@ -52,7 +38,7 @@ class TestVehicle:
             pytest.fail(str(e))
     
     @pytest.mark.parametrize("blueprint_id", Gen2VehicleType)
-    def test_gen2_vehicle_spawn(self, init_client, blueprint_id):
+    def test_gen2_vehicle_spawn(self, init_client: Callable, blueprint_id: str):
         """
         Test the spawning of the generation 2 vehicle
         Input: init_client: fixture returned carla.World, blueprint_id: blueprint id
