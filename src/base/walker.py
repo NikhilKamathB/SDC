@@ -28,7 +28,7 @@ class Walker(ActorMixin):
                  rotation: carla.Rotation = None,
                  attach_ai: bool = True,
                  invincible: bool = False,
-                 run_probability: float = 0.5):
+                 run_probability: float = 0.5) -> None:
         """
         Initialize the walker with the blueprint id.
         Input parameters:

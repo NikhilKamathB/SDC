@@ -67,3 +67,5 @@ export PORT="2000"
 
 ## References
 * [Carla Simulator](https://carla.org)
+* [Carla Simulator - Sensors reference](https://carla.readthedocs.io/en/latest/ref_sensors/)
+* [Carla Simulator - Blueprint Library](https://carla.readthedocs.io/en/latest/bp_library/)

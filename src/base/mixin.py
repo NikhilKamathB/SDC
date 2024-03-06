@@ -27,7 +27,7 @@ class ActorMixin:
                  location: carla.Location = None,
                  rotation: carla.Rotation = None,
                  spawn_on_road: bool = True,
-                 spawn_on_side: bool = False):
+                 spawn_on_side: bool = False) -> None:
         """
         Initialize the actor with the blueprint id.
         Input parameters:

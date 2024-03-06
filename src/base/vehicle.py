@@ -27,7 +27,7 @@ class Vehicle(ActorMixin):
                  blueprint_id: str = Gen2VehicleType.LINCOLN_MKZ_2020.value, 
                  role_name: str = "vehicle", 
                  location: carla.Location = None,
-                 rotation: carla.Rotation = None):
+                 rotation: carla.Rotation = None) -> None:
         """
         Initialize the vehicle with the blueprint id.
         Input parameters:
