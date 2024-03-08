@@ -60,6 +60,34 @@ class Camera_RGB(_BaseActor):
     enable_postprocess_effects: Optional[bool] = True
 
 
+class Camera_Depth(_BaseActor):
+
+    """
+    Define a depth camera that would get spawned in the environment.
+    """
+    blueprint_id: Optional[str] = "sensor.camera.depth"
+    role_name: Optional[str] = "camera_depth"
+    image_size_x: Optional[int] = 800
+    image_size_y: Optional[int] = 600
+    fov: Optional[float] = 90.0
+    sensor_tick: Optional[float] = 0.0
+    lens_circle_falloff: Optional[float] = 5.0
+    lens_circle_multiplier: Optional[float] = 0.0
+    lens_k: Optional[float] = -1.0
+    lens_kcube: Optional[float] = 0.0
+    lens_x_size: Optional[float] = 0.08
+    lens_y_size: Optional[float] = 0.08
+
+
+class Sensor(BaseModel):
+
+    """
+    Define the sensor model here.
+    """
+    camera_rgb: Optional[List[Camera_RGB]] = None
+    camera_depth: Optional[List[Camera_Depth]] = None
+
+
 class World(BaseModel):
 
     """

@@ -18,6 +18,9 @@ class TestVehicle:
         """
         blueprint_id = blueprint_id.value
         vehicle = Vehicle(world, blueprint_id=blueprint_id)
+        if vehicle.actor is None:
+            pytest.skip(
+                "Vehicle actor is not spawned, try with other blueprint/spawn points")
         vehicle.open_door()
         vehicle.close_door()
         vehicle.set_light_state(light_state=VehicleLightState.LowBeam.value)

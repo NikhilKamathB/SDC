@@ -17,7 +17,7 @@ class ActorMixin:
     Define a mixin for the actor - vehicle, walker, sensors, props, etc. class.
     """
 
-    __MAX_RETRY__ = 10
+    __MAX_RETRY__ = 25
     __LOG_PREFIX__ = "ActorMixin"
 
     def __init__(self, 
@@ -27,7 +27,8 @@ class ActorMixin:
                  location: carla.Location = None,
                  rotation: carla.Rotation = None,
                  spawn_on_road: bool = True,
-                 spawn_on_side: bool = False) -> None:
+                 spawn_on_side: bool = False,
+                 parent: carla.Actor = None) -> None:
         """
         Initialize the actor with the blueprint id.
         Input parameters:
@@ -38,6 +39,7 @@ class ActorMixin:
             - rotation: the rotation of the actor.
             - spawn_on_road: whether to spawn the actor on the road or not.
             - spawn_on_side: whether to spawn the actor on the side (other than road) or not.
+            - parent: the parent actor of the actor.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the actor with blueprint id {blueprint_id}")
         self.world = world
@@ -48,6 +50,7 @@ class ActorMixin:
         self.spawn_on_road = spawn_on_road
         self.spawn_on_side = spawn_on_side
         self.spawn_points = self.world.get_map().get_spawn_points()
+        self.parent = parent
     
     def _pick_random_from_enum(self, enum_class: Enum) -> str:
         """
@@ -59,14 +62,19 @@ class ActorMixin:
         """
         return random.choice(list(enum_class)).value
     
-    def _set_blueprint(self) -> None:
+    def _set_blueprint(self, **kwargs) -> None:
         """
         Set the blueprint of the actor.
+        Input parameters:
+            - kwargs: the parameters to set the blueprint of the actor.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting the blueprint of the actor with blueprint_id {self.blueprint_id}")
         try:
             self.actor_bp = self.world.get_blueprint_library().find(self.blueprint_id)
             self.actor_bp.set_attribute("role_name", self.role_name)
+            for key, value in kwargs.items():
+                if self.actor_bp.has_attribute(key):
+                    self.actor_bp.set_attribute(key, str(value))
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while setting the blueprint of the actor with blueprint_id {self.blueprint_id}")
             raise e
@@ -110,33 +118,41 @@ class ActorMixin:
         logger.info(f"{self.__LOG_PREFIX__}: Spawning the actor in the environment")
         try:
             if self.location is not None:
-                actor = self.world.spawn_actor(self.actor_bp, self._get_spawn_point_from_location_and_rotation())
+                if self.parent:
+                    # location and rotation becomes relative to the parent actor
+                    actor = self.world.spawn_actor(
+                        self.actor_bp, self._get_spawn_point_from_location_and_rotation(), attach_to=self.parent)
+                else:
+                    actor = self.world.spawn_actor(
+                        self.actor_bp, self._get_spawn_point_from_location_and_rotation())
             else:
-                tries = 0
-                while tries < self.__MAX_RETRY__:
-                    spawn_point = self._get_random_spawn_point()
-                    try:
-                        actor = self.world.spawn_actor(self.actor_bp, spawn_point)
-                        break
-                    except RuntimeError:
-                        tries += 1
-                        continue
-                if actor is None:
-                    raise RuntimeError(f"{self.__LOG_PREFIX__}: Could not spawn the actor in the environment after {self.__MAX_RETRY__} retries")
+                if self.parent is not None:
+                    actor = self.world.spawn_actor(self.actor_bp, carla.Transform(), attach_to=self.parent)
+                else:
+                    tries = 0
+                    while tries < self.__MAX_RETRY__:
+                        spawn_point = self._get_random_spawn_point()
+                        try:
+                            actor = self.world.spawn_actor(self.actor_bp, spawn_point)
+                            break
+                        except RuntimeError:
+                            tries += 1
+                            continue
+                    if actor is None:
+                        raise RuntimeError(f"{self.__LOG_PREFIX__}: Could not spawn the actor in the environment after {self.__MAX_RETRY__} retries")
             return actor
-        except RuntimeError as e:
-            logger.warning(f"{self.__LOG_PREFIX__}: Could not spawn the actor with blueprint_id {self.blueprint_id} in the environment for the given/random location and orientation")
-            return None
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while spawning the actor with blueprint_id {self.blueprint_id} in the environment")
-            raise e
+            return None
     
-    def _build(self) -> None:
+    def _build(self, **kwargs) -> None:
         """
         Build the actor.
+        Input parameters:
+            - kwargs: the parameters to build the actor.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Building the actor with blueprint_id {self.blueprint_id}")
-        self._set_blueprint()
+        self._set_blueprint(**kwargs)
         self.actor = self._spawn_actor()
 
     def destroy(self) -> None:

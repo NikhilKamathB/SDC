@@ -4,10 +4,15 @@
 
 import os
 import logging
+from pathlib import Path
 from .utils.logger import __setup_logger__
 
 
-__LOGGING_DIR__ = "../logs"
+__PATH_FILE__ = Path(__file__)
+__PATH_PKG__ = __PATH_FILE__.parent
+__PATH_ROOT__ = __PATH_PKG__.parent.parent
+
+__LOGGING_DIR__ = f"{__PATH_ROOT__}/logs"
 __LOGGING_LEVEL__ = logging.INFO
 
 if not os.path.exists(__LOGGING_DIR__):

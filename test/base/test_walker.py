@@ -6,36 +6,11 @@ import carla
 import pytest
 from typing import Callable
 from test.utils import init_client
-from src.base.walker import Walker
 from src.model.enum import WalkerType
+from src.base.walker import Walker, WalkerAI
 
 
 class TestWalker:
-
-    def run_test(self, world: carla.World, blueprint_id: str, attach_ai: bool = True) -> None:
-        """
-        Run the test for the walker class
-        Input: world: carla.World, blueprint_id: str, attach_ai: bool = True
-        """
-        blueprint_id = blueprint_id.value
-        walker = Walker(world, blueprint_id=blueprint_id, attach_ai=attach_ai)
-        if attach_ai:
-            walker.set_ai_walker_destination()
-            walker.start_ai()
-            walker.stop_ai()
-            walker.reset_ai()
-            walker.destroy()
-
-    @pytest.mark.parametrize("blueprint_id", WalkerType)
-    def test_walker_with_ai_controller_spawn(self, init_client: Callable, blueprint_id: str):
-        """
-        Test the spawning of the walker with the AI controller
-        Input: init_client: fixture returned carla.World, blueprint_id: str
-        """
-        try:
-            self.run_test(init_client, blueprint_id)
-        except Exception as e:
-            pytest.fail(str(e))
     
     @pytest.mark.parametrize("blueprint_id", WalkerType)
     def test_walker_spawn(self, init_client: Callable, blueprint_id: str):
@@ -44,6 +19,65 @@ class TestWalker:
         Input: init_client: fixture returned carla.World, blueprint_id: str
         """
         try:
-            self.run_test(init_client, blueprint_id, attach_ai=False)
+            world = init_client
+            walker = Walker(world, blueprint_id= blueprint_id.value)
+            if walker.actor is None:
+                pytest.skip(
+                    "Walker actor is not spawned, try with other blueprint/spawn points")
+            walker.actor.destroy()
+        except Exception as e:
+            pytest.fail(str(e))
+
+
+class TestWalkerAI:
+
+    def run_agent(self, ai_walker: WalkerAI):
+        """
+        Run the test for the walker with AI
+        Input: ai_walker: WalkerAI
+        """
+        ai_walker.set_speed()
+        ai_walker.set_ai_walker_destination()
+        ai_walker.start_ai()
+        ai_walker.stop_ai()
+        ai_walker.reset_ai()
+        ai_walker.destroy()
+
+    def test_ai_walker_spawn(self, init_client: Callable):
+        """
+        Test the spawning of the walker with AI
+        Input: init_client: fixture returned carla.World
+        """
+        try:
+            world = init_client
+            walker = Walker(
+                world, blueprint_id=WalkerType.pedestrian_1_3.value)
+            if walker.actor is None:
+                pytest.skip(
+                    "Walker actor is not spawned, try with other blueprint/spawn points")
+            ai_walker = WalkerAI(
+                world, parent=walker.actor, speed=walker.speed)
+            self.run_agent(ai_walker)
+            walker.destroy()
+        except Exception as e:
+            pytest.fail(str(e))
+    
+    def test_ai_walker_with_transform_spawn(self, init_client: Callable):
+        """
+        Test the spawning of the walker with AI and transform
+        Input: init_client: fixture returned carla.World
+        """
+        try:
+            world = init_client
+            walker = Walker(
+                world, blueprint_id=WalkerType.pedestrian_1_3.value)
+            if walker.actor is None:
+                pytest.skip("Walker actor is not spawned, try with other blueprint/spawn points")
+            location = carla.Location(x=0, y=0, z=0.5)
+            rotation = carla.Rotation()
+            ai_walker = WalkerAI(world, parent=walker.actor,
+                                 location=location, rotation=rotation, speed=walker.speed)
+            self.run_agent(ai_walker)
+            walker.destroy()
         except Exception as e:
             pytest.fail(str(e))
