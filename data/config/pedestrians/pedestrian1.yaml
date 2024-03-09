@@ -1,0 +1,4 @@
+role_name: pedestrian_1
+is_invincible: false
+attach_ai: true
+run_probability: 0.5

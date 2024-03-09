@@ -23,11 +23,12 @@ class Vehicle(ActorMixin):
     __LOG_PREFIX__ = "Vehicle"
 
     def __init__(self, 
-                 world: carla.World, 
+                 world: carla.World,
                  blueprint_id: str = Gen2VehicleType.LINCOLN_MKZ_2020.value, 
                  role_name: str = "vehicle", 
                  location: carla.Location = None,
-                 rotation: carla.Rotation = None) -> None:
+                 rotation: carla.Rotation = None,
+                 **kwargs) -> None:
         """
         Initialize the vehicle with the blueprint id.
         Input parameters:
@@ -36,11 +37,12 @@ class Vehicle(ActorMixin):
             - role_name: the role name of the vehicle.
             - location: the location where the vehicle would be spawned.
             - rotation: the rotation of the vehicle.
+            - kwargs: additional keyword arguments.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the vehicle with blueprint id {blueprint_id}")
         super().__init__(world, blueprint_id, role_name, location, rotation,
                          spawn_on_road=True, spawn_on_side=False)
-        self._build()
+        self._build(**kwargs)
         
     def close_door(self, door_id: carla.VehicleDoor = VehicleDoor.All.value, is_random: bool = False) -> bool:
         """

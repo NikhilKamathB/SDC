@@ -10,7 +10,7 @@ from src.base.mixin import ActorMixin
 logger = logging.getLogger(__name__)
 
 
-class Camera_RGB(ActorMixin):
+class CameraRGB(ActorMixin):
 
     """
     Define a RGB camera that would get spawned in the environment.
@@ -44,7 +44,7 @@ class Camera_RGB(ActorMixin):
         self._build(**kwargs)
 
 
-class Camera_Depth(ActorMixin):
+class CameraDepth(ActorMixin):
 
     """
     Define a depth camera that would get spawned in the environment.

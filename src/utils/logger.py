@@ -6,6 +6,7 @@
 import os
 import logging
 from datetime import datetime
+from rich.logging import RichHandler
 
 
 def __setup_logger__(log_dir: str = "/logs", level: int = logging.INFO) -> None:
@@ -23,6 +24,6 @@ def __setup_logger__(log_dir: str = "/logs", level: int = logging.INFO) -> None:
         format="[%(levelname)s] || %(asctime)s || %(name)s || %(message)s",
         handlers=[
             logging.FileHandler(log_filename),
-            logging.StreamHandler()
+            RichHandler()
         ]
     )

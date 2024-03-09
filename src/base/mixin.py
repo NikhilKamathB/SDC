@@ -162,7 +162,8 @@ class ActorMixin:
             - None
         """
         logger.info(f"{self.__LOG_PREFIX__}: Destroying the actor with id {self.actor.id}, {self.blueprint_id}, from the environment")
-        self.actor.destroy()
+        if self.actor.is_alive:
+            self.actor.destroy()
     
     def __str__(self) -> str:
         """

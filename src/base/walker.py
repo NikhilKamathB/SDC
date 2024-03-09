@@ -21,14 +21,12 @@ class Walker(ActorMixin):
     __LOG_PREFIX__ = "Walker"
 
     def __init__(self, 
-                 world: carla.World, 
+                 world: carla.World,
                  blueprint_id: str = WalkerType.pedestrian_1_1.value,
                  role_name: str = "walker", 
                  location: carla.Location = None,
                  rotation: carla.Rotation = None,
-                 attach_ai: bool = True,
-                 invincible: bool = False,
-                 run_probability: float = 0.5) -> None:
+                 **kwargs) -> None:
         """
         Initialize the walker with the blueprint id.
         Input parameters:
@@ -37,18 +35,14 @@ class Walker(ActorMixin):
             - role_name: the role name of the walker.
             - location: the location where the walker would be spawned.
             - rotation: the rotation of the walker.
-            - attach_ai: whether to attach the walker to the AI controller or not.
-            - invincible: whether the walker is invincible or not.
-            - run_probability: the probability of the walker running.
+            - kwargs: additional keyword arguments.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the walker with blueprint id {blueprint_id}")
         super().__init__(world, blueprint_id, role_name, location, rotation,
                          spawn_on_road=False, spawn_on_side=True)
-        self.invincible = invincible
-        self.attach_ai = attach_ai
+        self.run_probability = kwargs.get("run_probability", 0.5)
         self.ai_walker = None
-        self.run_probability = run_probability
-        self._build()
+        self._build(**kwargs)
     
     def _set_speed(self) -> float:
         """
@@ -68,29 +62,12 @@ class Walker(ActorMixin):
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while setting the speed of the walker")
             raise e
-
-    def _set_invincible(self) -> None:
-        """
-        Set the invincibility of the walker.
-        """
-        logger.info(
-            f"{self.__LOG_PREFIX__}: Setting the invincibility of the walker")
-        try:
-            if self.invincible:
-                self.actor_bp.set_attribute("is_invincible", "true")
-            else:
-                self.actor_bp.set_attribute("is_invincible", "false")
-        except Exception as e:
-            logger.error(
-                f"{self.__LOG_PREFIX__}: An error occurred while setting the invincibility of the walker")
-            raise e
     
-    def _build(self) -> None:
+    def _build(self, **kwargs) -> None:
         """
         Build the walker.
         """
-        super()._build()
-        self._set_invincible()
+        super()._build(**kwargs)
         self.speed = self._set_speed()
         
 
@@ -109,7 +86,7 @@ class WalkerAI(ActorMixin):
                  role_name: str = "ai_walker",
                  location: carla.Location = None,
                  rotation: carla.Rotation = None,
-                 speed: float = 1.8
+                 **kwargs
                  ) -> None:
         """
         Initialize the AI walker with the blueprint id.
@@ -120,14 +97,14 @@ class WalkerAI(ActorMixin):
             - role_name: the role name of the AI walker.
             - location: the location where the AI walker would be spawned, relative to the parent actor.
             - rotation: the rotation of the AI walker, relative to the parent actor.
-            - speed: the speed of the AI walker.
+            - kwargs: additional keyword arguments.
         """
         logger.info(
             f"{self.__LOG_PREFIX__}: Initializing the walker with blueprint id {blueprint_id}")
         super().__init__(world, blueprint_id, role_name, location, rotation,
                          spawn_on_road=False, spawn_on_side=True, parent=parent)
-        self.speed = speed
-        self._build()
+        self.speed = kwargs.get("speed", 1.8)
+        self._build(**kwargs)
     
     def set_speed(self, speed: float = None) -> None:
         """

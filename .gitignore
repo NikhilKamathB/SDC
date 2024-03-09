@@ -12,6 +12,9 @@
 *.gif
 *.mp3
 *.mp4
+*.yaml
+!vehicle1.yaml
+!pedestrian1.yaml
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
