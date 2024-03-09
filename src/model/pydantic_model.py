@@ -72,37 +72,39 @@ class _BaseActor(BaseModel):
         return self.rotation.to_carla_rotation() if self.rotation else None
 
 
-class CameraRGB(_BaseActor):
+class _BaseSensor(_BaseActor):
+
+    """
+    Define the base sensor model here.
+    """
+    role_name: Optional[str] = "base_sensor"
+    fov: Optional[float] = 90.0
+    image_size_x: Optional[int] = 800
+    image_size_y: Optional[int] = 600
+    sensor_tick: Optional[float] = 0.0
+
+
+class CameraRGB(_BaseSensor):
 
     """
     Define a camera that would get spawned in the environment.
     """
     blueprint_id: Optional[str] = "sensor.camera.rgb"
-    role_name: Optional[str] = "camera_rgb"
-    fov: Optional[float] = 90.0
-    image_size_x: Optional[int] = 800
-    image_size_y: Optional[int] = 600
     bloom_intensity: Optional[float] = 0.675
     fstop: Optional[float] = 1.4
     iso: Optional[float] = 100.0
     gamma: Optional[float] = 2.2
     lens_flare_intensity: Optional[float] = 0.1
-    sensor_tick: Optional[float] = 0.0
     shutter_speed: Optional[float] = 200.0
     enable_postprocess_effects: Optional[bool] = True
 
 
-class CameraDepth(_BaseActor):
+class CameraDepth(_BaseSensor):
 
     """
     Define a depth camera that would get spawned in the environment.
     """
     blueprint_id: Optional[str] = "sensor.camera.depth"
-    role_name: Optional[str] = "camera_depth"
-    image_size_x: Optional[int] = 800
-    image_size_y: Optional[int] = 600
-    fov: Optional[float] = 90.0
-    sensor_tick: Optional[float] = 0.0
     lens_circle_falloff: Optional[float] = 5.0
     lens_circle_multiplier: Optional[float] = 0.0
     lens_k: Optional[float] = -1.0

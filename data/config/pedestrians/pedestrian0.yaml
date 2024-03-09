@@ -1,4 +1,4 @@
-role_name: pedestrian_1
+role_name: pedestrian_0
 is_invincible: false
 attach_ai: true
 run_probability: 0.5

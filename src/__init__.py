@@ -6,12 +6,17 @@ import os
 import logging
 from pathlib import Path
 from .base.vehicle import Vehicle
+from .client import CarlaClientCLI
 from .base.walker import Walker, WalkerAI
+from .data_synthesizer import DataSynthesizer
 from .model import pydantic_model as PydanticModel
 from .utils.logger import __setup_logger__
 from .utils.utils import (
     print_param_table,
-    read_yaml_file as read_yaml
+    read_yaml_file as read_yaml,
+    write_yaml_file as write_yaml,
+    generate_vehicle_configuration_dict as generate_vehicle_config,
+    generate_pedestrian_configuration_dict as generate_pedestrian_config,
 )
 
 
@@ -28,8 +33,13 @@ __setup_logger__(log_dir=__LOGGING_DIR__, level=__LOGGING_LEVEL__)
 __all__ = [
     "print_param_table",
     "read_yaml",
+    "write_yaml",
     "PydanticModel",
     "Walker",
     "WalkerAI",
     "Vehicle",
+    "DataSynthesizer",
+    "CarlaClientCLI", 
+    "generate_vehicle_config",
+    "generate_pedestrian_config"
 ]

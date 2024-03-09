@@ -13,8 +13,8 @@
 *.mp3
 *.mp4
 *.yaml
-!vehicle1.yaml
-!pedestrian1.yaml
+!vehicle0.yaml
+!pedestrian0.yaml
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

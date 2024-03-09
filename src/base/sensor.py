@@ -16,7 +16,7 @@ class CameraRGB(ActorMixin):
     Define a RGB camera that would get spawned in the environment.
     """
 
-    __LOG_PREFIX__ = "Camera_RGB"
+    __LOG_PREFIX__ = "CameraRGB"
 
     def __init__(
                 self,
@@ -50,7 +50,7 @@ class CameraDepth(ActorMixin):
     Define a depth camera that would get spawned in the environment.
     """
 
-    __LOG_PREFIX__ = "Camera_Depth"
+    __LOG_PREFIX__ = "CameraDepth"
 
     def __init__(
         self,
