@@ -9,4 +9,5 @@ pytest
 typer
 typer[all]
 PyYAML
+python-dotenv
 carla~=0.9.15

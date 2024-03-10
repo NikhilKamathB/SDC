@@ -6,6 +6,7 @@ import os
 import logging
 import typer as T
 from typing import Optional
+from dotenv import load_dotenv
 from src import print_param_table, read_yaml, write_yaml
 from src import (
     CarlaClientCLI, DataSynthesizer,
@@ -15,13 +16,14 @@ from src import (
 
 __app__ = T.Typer()
 __app__.prog_name = "CARLA CLIENT CLI"
+load_dotenv()
 logger = logging.getLogger(__name__)
 
 
 @__app__.command(name="generate_synthetic_data", help="This command generates synthetic data from various sensors in the Carla environment.")
 def generate_synthetic_data(
-    hostname: Optional[str] = T.Option("localhost", help="The hostname of the Carla server."),
-    port: Optional[int] = T.Option(2000, help="The port on which the Carla server will be running."),
+    hostname: Optional[str] = T.Option(os.getenv("HOSTNAME"), help="The hostname of the Carla server."),
+    port: Optional[int] = T.Option(os.getenv("PORT"), help="The port on which the Carla server will be running."),
     carla_client_timeout: Optional[float] = T.Option(2.0, help="The connection timeout for the Carla client."),
     asynchronous: Optional[bool] = T.Option(
         True, help="Whether to run the simulation in asynchronous mode or not."),
