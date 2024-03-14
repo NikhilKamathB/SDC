@@ -25,11 +25,58 @@ class DataSynthesizer:
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the data synthesizer")
         self.carla_client_cli = carla_client_cli
     
+    def _set_vehicle_autopilot(self) -> None:
+        """
+        Set the vehicles to auto pilot mode.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Setting the vehicles to auto pilot mode with the traffic manager port {self.carla_client_cli.tm_port}")
+        for vehicle in self.carla_client_cli.vehicles:
+            vehicle.set_autopilot(tm_port=self.carla_client_cli.tm_port)
+    
+    def _set_walker_ready(self) -> None:
+        """
+        Set the speed of the walkers.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Setting the walkers to ready")
+        for walker, walker_controller in self.carla_client_cli.walkers:
+            if walker_controller and walker: # Hard check
+                walker_controller.set_ai_walker_destination()
+                walker_controller.start_ai()
+                walker_controller.set_speed(walker.speed)
+    
+    def _step_commit(self) -> None:
+        """
+        Perform custom step update here
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Performing the walker step")
+        # Update walker
+        for _, walker_controller in self.carla_client_cli.walkers:
+            if walker_controller and walker_controller.destination and \
+                walker_controller.actor.get_location().distance(walker_controller.destination) < 1.0:
+                walker_controller.reset_ai()
+                walker_controller.start_ai()
+        # Update spectator
+        if self.carla_client_cli.specator_attahced_to:
+            self.carla_client_cli.specator.set_transform(
+                self.carla_client_cli.specator_attahced_to.get_transform()
+            )
+    
+    def _pre_commit(self) -> None:
+        """
+        Perform any pre-operations before actually ticking the simulator.
+        """
+        self._set_vehicle_autopilot()
+        self._set_walker_ready()
+        self.carla_client_cli.tick()  # a tick to ensure client receives the recent information
+        logger.info(f"{self.__LOG_PREFIX__}: Pre-commit operations completed in {self.carla_client_cli.world.get_snapshot().timestamp.elapsed_seconds - self.carla_client_cli.simulation_start_time} seconds")
+        self.carla_client_cli.simulation_start_time = self.carla_client_cli.world.get_snapshot().timestamp.elapsed_seconds
+    
     def run(self) -> None:
         """
         Run the data synthesizer.
         """
         try:
+            self._pre_commit()
             while self.carla_client_cli.max_simulation_time > \
                     self.carla_client_cli.world.get_snapshot().timestamp.elapsed_seconds - self.carla_client_cli.simulation_start_time:
                 snapshot = self.carla_client_cli.world.get_snapshot()
@@ -39,7 +86,8 @@ class DataSynthesizer:
                                     \n\tDelta seconds since previous frame: {snapshot.timestamp.delta_seconds} | \
                                         \n\tPlatform timestamp: {snapshot.timestamp.platform_timestamp} | \
                                             \n\tTime remaining: {self.carla_client_cli.max_simulation_time - (snapshot.timestamp.elapsed_seconds - self.carla_client_cli.simulation_start_time)}")
-                self.carla_client_cli.world.tick()
+                self._step_commit()
+                self.carla_client_cli.tick()
         except KeyboardInterrupt:
             logger.warning(f"{self.__LOG_PREFIX__}: Keyboard interrupt occurred while running the data synthesizer")
         except Exception as e:

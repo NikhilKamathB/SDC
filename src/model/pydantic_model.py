@@ -4,8 +4,8 @@
 
 import carla
 import random
+from pydantic import BaseModel
 from typing import Optional, List, Union
-from pydantic import BaseModel, validator
 from src.model.enum import Gen2VehicleType, WalkerType
 from src.base.sensor import (
     CameraRGB as CameraRGBActor, 

@@ -4,7 +4,17 @@
 
 import carla
 from enum import Enum
+
+
+class SpectatorAttachmentMode(Enum):
+
+    """
+    Define spectator atttachment mode.
+    """
     
+    Default = "d"
+    Vehicle = "v"
+    Pedestrian = "p"
 
 class VehicleDoor(Enum):
 

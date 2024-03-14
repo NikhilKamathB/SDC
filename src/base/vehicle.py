@@ -111,29 +111,33 @@ class Vehicle(ActorMixin):
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while getting the light state of the vehicle with id {self.actor.id} | {self.blueprint_id} | {e}")
             return None
     
-    def set_autopilot(self) -> bool:
+    def set_autopilot(self, tm_port: int = 8000) -> bool:
         """
         Set the autopilot of the vehicle.
+        Input parameters:
+            - tm_port: the port number of the traffic manager.
         Output:
             - bool: whether the autopilot was set or not.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting the autopilot of the vehicle with id {self.actor.id} | {self.blueprint_id}")
         try:
-            self.actor.set_autopilot(True)
+            self.actor.set_autopilot(True, tm_port=tm_port)
             return True
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while setting the autopilot of the vehicle with id {self.actor.id} | {self.blueprint_id} | {e}")
             return False
     
-    def unset_autopilot(self) -> bool:
+    def unset_autopilot(self, tm_port: int = 8000) -> bool:
         """
         Unset the autopilot of the vehicle.
+        Input parameters:
+            - tm_port: the port number of the traffic manager.
         Output:
             - bool: whether the autopilot was unset or not.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Unsetting the autopilot of the vehicle with id {self.actor.id} | {self.blueprint_id}")
         try:
-            self.actor.set_autopilot(False)
+            self.actor.set_autopilot(False, port=tm_port)
             return True
         except Exception as e:
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while unsetting the autopilot of the vehicle with id {self.actor.id} | {self.blueprint_id} | {e}")

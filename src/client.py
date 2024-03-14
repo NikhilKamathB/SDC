@@ -4,11 +4,15 @@
 
 import os
 import carla
+import random
 import logging
-import typer as T
 from src.base.vehicle import Vehicle
+from src.base.sensor import CameraRGB
 from src.base.walker import Walker, WalkerAI
-from src.model import pydantic_model as PydanticModel
+from src.model import (
+    enum,
+    pydantic_model as PydanticModel
+)
 from src.utils.utils import read_yaml_file as read_yaml
 
 
@@ -33,9 +37,23 @@ class CarlaClientCLI:
         self.port = kwargs.get("port", 2000)
         self.carla_client_timeout = kwargs.get("carla_client_timeout", 2.0)
         self.max_simulation_time = kwargs.get("max_simulation_time", 100000)
-        self.asynchronous = kwargs.get("asynchronous", True)
+        self.synchronous = kwargs.get("synchronous", True)
+        self.tm_port = kwargs.get("tm_port", 8000)
+        self.tm_hybrid_physics_mode = kwargs.get("tm_hybrid_physics_mode", True)
+        self.tm_hybrid_physics_radius = kwargs.get("tm_hybrid_physics_radius", 70.0)
+        self.tm_global_distance_to_leading_vehicle = kwargs.get("tm_global_distance_to_leading_vehicle", 2.5)
+        self.tm_seed = kwargs.get("tm_seed", 42)
+        self.spectator_enabled= kwargs.get("spectator_enabled", True)
+        self.spectator_attachment_mode = kwargs.get(
+            "spectator_attachment_mode", enum.SpectatorAttachmentMode.Vehicle.value)
+        self.spectator_location_offset = kwargs.get(
+            "spectator_location_offset", [10.0, 0.0, 10.0])
+        self.spectator_rotation = kwargs.get(
+            "spectator_rotation", [-90.0, 0.0, 0.0])
         self.vehicles, self.sensors = [], []
-        self.walkers, self.ai_walkers = [], []
+        self.walkers = []
+        self.specator = None
+        self.specator_attahced_to = None
         self._init_client()
 
     def _init_client(self) -> None:
@@ -48,6 +66,7 @@ class CarlaClientCLI:
             self.client = carla.Client(self.hostname, self.port)
             self.client.set_timeout(self.carla_client_timeout)
             self.world = self._init_world()
+            self.traffic_manager = self._init_traffic_manager()
             self.simulation_start_time = self.world.get_snapshot().timestamp.elapsed_seconds
         except Exception as e:
             logger.error(
@@ -64,12 +83,32 @@ class CarlaClientCLI:
                 f"{self.__LOG_PREFIX__}: Getting the world from the Carla server")
             world = self.client.get_world()
             settings = world.get_settings()
-            settings.synchronous_mode = not self.asynchronous
+            settings.synchronous_mode = self.synchronous
             world.apply_settings(settings)
             return world
         except Exception as e:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Error while getting the world from the Carla server: {e}")
+            raise e
+    
+    def _init_traffic_manager(self) -> carla.TrafficManager:
+        """
+        Get the traffic manager from the Carla server.
+        Return: carla.TrafficManager
+        """
+        try:
+            logger.info(
+                f"{self.__LOG_PREFIX__}: Initiating the traffic manager for the Carla server")
+            traffic_manager = self.client.get_trafficmanager(self.tm_port)
+            traffic_manager.set_hybrid_physics_mode(self.tm_hybrid_physics_mode)
+            traffic_manager.set_hybrid_physics_radius(self.tm_hybrid_physics_radius)
+            traffic_manager.set_global_distance_to_leading_vehicle(self.tm_global_distance_to_leading_vehicle)
+            traffic_manager.set_random_device_seed(self.tm_seed)
+            traffic_manager.set_synchronous_mode(self.synchronous)
+            return traffic_manager
+        except Exception as e:
+            logger.error(
+                f"{self.__LOG_PREFIX__}: Error while initiating the traffic manager from the Carla server: {e}")
             raise e
 
     def _spawn_vehicle(self, config: dict) -> bool:
@@ -90,26 +129,29 @@ class CarlaClientCLI:
                 location=raw_vehicle.to_carla_location(),
                 rotation=raw_vehicle.to_carla_rotation()
             )
-            self.vehicles.append(vehicle)
             # Log vehicle spawned.
             logger.info(
                 f"{self.__LOG_PREFIX__}: Vehicle spawned with details: {vehicle}")
-            # Spawn the RGB cameras for the vehicle.
-            vehicle_rgb_cameras = raw_vehicle.sensors.create_camera_rgb_objects(
-                world=self.world,
-                parent=vehicle.actor,
-            )
-            # Spawn the depth cameras for the vehicle.
-            vehicle_depth_cameras = raw_vehicle.sensors.create_camera_depth_objects(
-                world=self.world,
-                parent=vehicle.actor,
-            )
-            # Update the sensors list.
-            self.sensors += vehicle_rgb_cameras + vehicle_depth_cameras
-            # Log the sensors spawned.
-            for sensor in vehicle_rgb_cameras + vehicle_depth_cameras:
-                logger.info(
-                    f"{self.__LOG_PREFIX__}: Sensor spawned with details: {sensor}")
+            if vehicle is not None:
+                self.vehicles.append(vehicle)
+                # Spawn the RGB cameras for the vehicle.
+                vehicle_rgb_cameras = raw_vehicle.sensors.create_camera_rgb_objects(
+                    world=self.world,
+                    parent=vehicle.actor,
+                )
+                # Spawn the depth cameras for the vehicle.
+                vehicle_depth_cameras = raw_vehicle.sensors.create_camera_depth_objects(
+                    world=self.world,
+                    parent=vehicle.actor,
+                )
+                # Update the sensors list.
+                self.sensors += vehicle_rgb_cameras + vehicle_depth_cameras
+                # Log the sensors spawned.
+                for sensor in vehicle_rgb_cameras + vehicle_depth_cameras:
+                    logger.info(
+                        f"{self.__LOG_PREFIX__}: Sensor spawned with details: {sensor}")
+            else:
+                logger.info(f"{self.__LOG_PREFIX__}: Vehicle and its associated sensors could not be spawned")
             return True
         except Exception as e:
             logger.error(
@@ -151,12 +193,12 @@ class CarlaClientCLI:
                 is_invincible=raw_walker.is_invincible,
                 run_probability=raw_walker.run_probability
             )
-            self.walkers.append(walker)
             # Log walker spawned.
             logger.info(
                 f"{self.__LOG_PREFIX__}: Walker spawned with details: {walker}")
             # Attach the AI walker to the parent if needed.
-            if raw_walker.attach_ai:
+            walker_ai = None
+            if raw_walker.attach_ai and walker:
                 walker_ai = WalkerAI(
                     world=self.world,
                     parent=walker.actor,
@@ -164,10 +206,13 @@ class CarlaClientCLI:
                     location=raw_walker.to_carla_location(),
                     rotation=raw_walker.to_carla_rotation()
                 )
-                self.ai_walkers.append(walker_ai)
                 # Log walker AI spawned.
                 logger.info(
                     f"{self.__LOG_PREFIX__}: Walker AI spawned with details: {walker_ai}")
+            if walker is not None:
+                self.walkers.append(
+                    (walker, walker_ai) # walker_ai can be None
+                )
             return True
         except Exception as e:
             logger.error(
@@ -188,6 +233,43 @@ class CarlaClientCLI:
             success = self._spawn_walker(walker_config)
             logger.info(
                 f"{self.__LOG_PREFIX__}: Walker - {idx} spawned with status {success}")
+    
+    def _assist_spectator(self, actor: carla.Actor) -> carla.Actor:
+        """
+        Assist the spectator movement in the Carla environment - a trick
+        Input parameters:
+            - actor: carla.Actor - the actor to which the dummy sensor and therefore the spectator is attached.
+        Output: 
+            - carla.Actor - the dummy sensor attached to the actor.
+        """
+        try:
+            assert self.specator is not None, "Spectator not initialized"
+            _dummy_sensor = CameraRGB(world=self.world, parent=actor, location=carla.Location(*self.spectator_location_offset), rotation=carla.Rotation(*self.spectator_rotation))
+            self.specator.set_transform(_dummy_sensor.get_transform())
+            return _dummy_sensor
+        except Exception as e:
+            logger.error(
+                f"{self.__LOG_PREFIX__}: Error while assisting the spectator movement: {e}")
+    
+    def _spawn_spectator(self) -> None:
+        """
+        Spawn the spectator in the Carla environment.
+        """
+        logger.info(
+            f"{self.__LOG_PREFIX__}: Spawning the spectator in the Carla environment")
+        try:
+            self.specator = self.world.get_spectator()
+            if self.spectator_enabled and self.spectator_attachment_mode != enum.SpectatorAttachmentMode.Default.value:
+                if self.spectator_attachment_mode == enum.SpectatorAttachmentMode.Vehicle.value:
+                    _actor = random.choice(self.vehicles)
+                elif self.spectator_attachment_mode == enum.SpectatorAttachmentMode.Pedestrian.value:
+                    _actor = random.choice(self.walkers)[0] # Get the walker and not the controller
+                else:
+                    return None
+                self.specator_attahced_to = self._assist_spectator(_actor.actor)
+        except Exception as e:
+            logger.error(
+                f"{self.__LOG_PREFIX__}: Error while spawning the spectator in the Carla environment: {e}")
 
     def configure_environemnt(self, *args, **kwargs) -> None:
         """
@@ -202,6 +284,10 @@ class CarlaClientCLI:
             # Spawn the walkers in the Carla environment.
             self._spawn_walkers(kwargs.get(
                 "pedestrian_config_dir"), kwargs.get("max_pedestrians"))
+            # Spawn the spectator in the Carla environment.
+            self._spawn_spectator()
+            # Perform tick
+            self.tick()
         except Exception as e:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Error while configuring the environment: {e}")
@@ -213,10 +299,10 @@ class CarlaClientCLI:
         Tick the Carla server.
         """
         try:
-            if self.asynchronous:
-                self.world.wait_for_tick()
-            else:
+            if self.synchronous:
                 self.world.tick()
+            else:
+                self.world.wait_for_tick()
         except Exception as e:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Error while ticking the Carla server: {e}")
@@ -232,15 +318,17 @@ class CarlaClientCLI:
             # Destroy the vehicles from the Carla environment.
             for vehicle in self.vehicles:
                 vehicle.destroy()
+            # Destroy the walkers and the associated controller from the Carla environment.
+            for walker, walker_controller in self.walkers:
+                walker.destroy()
+                if walker_controller:
+                    walker_controller.destroy()
             # Destroy the sensors from the Carla environment.
             for sensor in self.sensors:
                 sensor.destroy()
-            # Destroy the walkers from the Carla environment.
-            for walker in self.walkers:
-                walker.destroy()
-            # Destroy the AI walkers from the Carla environment.
-            for walker_ai in self.ai_walkers:
-                walker_ai.destroy()
+            # Remove misc actors
+            if self.specator_attahced_to:
+                self.specator_attahced_to.destroy()
         except Exception as e:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Error while clearing the environment: {e}")

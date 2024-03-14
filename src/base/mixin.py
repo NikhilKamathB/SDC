@@ -118,22 +118,25 @@ class ActorMixin:
         logger.info(f"{self.__LOG_PREFIX__}: Spawning the actor in the environment")
         try:
             if self.location is not None:
+                spawn_point = self._get_spawn_point_from_location_and_rotation()
                 if self.parent:
                     # location and rotation becomes relative to the parent actor
-                    actor = self.world.spawn_actor(
-                        self.actor_bp, self._get_spawn_point_from_location_and_rotation(), attach_to=self.parent)
+                    actor = self.world.spawn_actor(self.actor_bp, spawn_point, attach_to=self.parent)
                 else:
-                    actor = self.world.spawn_actor(
-                        self.actor_bp, self._get_spawn_point_from_location_and_rotation())
+                    actor = self.world.spawn_actor(self.actor_bp, spawn_point)
             else:
                 if self.parent is not None:
-                    actor = self.world.spawn_actor(self.actor_bp, carla.Transform(), attach_to=self.parent)
+                    self.location, self.rotation = carla.Location(), carla.Rotation()
+                    spawn_point = carla.Transform(self.location, self.rotation)
+                    actor = self.world.spawn_actor(self.actor_bp, spawn_point, attach_to=self.parent)
                 else:
                     tries = 0
                     while tries < self.__MAX_RETRY__:
                         spawn_point = self._get_random_spawn_point()
                         try:
                             actor = self.world.spawn_actor(self.actor_bp, spawn_point)
+                            self.location = spawn_point.location
+                            self.rotation = spawn_point.rotation
                             break
                         except RuntimeError:
                             tries += 1
@@ -164,6 +167,30 @@ class ActorMixin:
         logger.info(f"{self.__LOG_PREFIX__}: Destroying the actor with id {self.actor.id}, {self.blueprint_id}, from the environment")
         if self.actor.is_alive:
             self.actor.destroy()
+    
+    def get_location(self) -> carla.Location:
+        """
+        Get the location of the actor.
+        Output:
+            - carla.Location: the location of the actor.
+        """
+        return self.actor.get_location() if self.actor else None
+
+    def get_rotation(self) -> carla.Rotation:
+        """
+        Get the rotation of the actor.
+        Output:
+            - carla.Rotation: the rotation of the actor.
+        """
+        return self.actor.get_transform().rotation if self.actor else None
+
+    def get_transform(self) -> carla.Transform:
+        """
+        Get the transform of the actor.
+        Output:
+            - carla.Transform: the transform of the actor.
+        """
+        return self.actor.get_transform() if self.actor else None
     
     def __str__(self) -> str:
         """

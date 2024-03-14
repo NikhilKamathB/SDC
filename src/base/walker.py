@@ -99,11 +99,13 @@ class WalkerAI(ActorMixin):
             - rotation: the rotation of the AI walker, relative to the parent actor.
             - kwargs: additional keyword arguments.
         """
+        assert parent is not None, "Parent actor is required for the AI walker"
         logger.info(
             f"{self.__LOG_PREFIX__}: Initializing the walker with blueprint id {blueprint_id}")
         super().__init__(world, blueprint_id, role_name, location, rotation,
                          spawn_on_road=False, spawn_on_side=True, parent=parent)
         self.speed = kwargs.get("speed", 1.8)
+        self.destination = None
         self._build(**kwargs)
     
     def set_speed(self, speed: float = None) -> None:
@@ -128,6 +130,7 @@ class WalkerAI(ActorMixin):
                 spawn_point = self._get_spawn_point_from_location_and_rotation()
             else:
                 spawn_point = self._get_random_spawn_point()
+            self.destination = spawn_point.location
             self.actor.go_to_location(spawn_point.location)
         except Exception as e:
             logger.error(

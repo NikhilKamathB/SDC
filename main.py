@@ -5,8 +5,8 @@
 import os
 import logging
 import typer as T
-from typing import Optional
 from dotenv import load_dotenv
+from typing import Optional, List
 from src import print_param_table, read_yaml, write_yaml
 from src import (
     CarlaClientCLI, DataSynthesizer,
@@ -25,8 +25,17 @@ def generate_synthetic_data(
     hostname: Optional[str] = T.Option(os.getenv("HOSTNAME"), help="The hostname of the Carla server."),
     port: Optional[int] = T.Option(os.getenv("PORT"), help="The port on which the Carla server will be running."),
     carla_client_timeout: Optional[float] = T.Option(2.0, help="The connection timeout for the Carla client."),
-    asynchronous: Optional[bool] = T.Option(
-        True, help="Whether to run the simulation in asynchronous mode or not."),
+    synchronous: Optional[bool] = T.Option(
+        True, help="Whether to run the simulation in synchronous mode or not."),
+    tm_port: Optional[int] = T.Option(8000, help="The port on which the traffic manager will be running."),
+    tm_hybrid_physics_mode: Optional[bool] = T.Option("True", help="Whether to run the traffic manager in hybrid physics mode or not."),
+    tm_hybrid_physics_radius: Optional[float] = T.Option(70.0, help="The radius for the hybrid physics mode."),
+    tm_global_distance_to_leading_vehicle: Optional[float] = T.Option(2.5, help="The global distance to the leading vehicle for the traffic manager."),
+    tm_seed: Optional[int] = T.Option(42, help="The seed for the traffic manager."),
+    spectator_enabled: Optional[bool] = T.Option(True, help="Whether to enable the spectator for custom spawning or not."),
+    spectator_attachment_mode: Optional[str] = T.Option("v", help="The mode of attachment for the spectator [d - default, v - vehicle, p - pedestrian]."),
+    spectator_location_offset: Optional[List[float]] = T.Option([-7.0, 0.0, 5.0], help="The location offset for the spectator in [x, y, z] format. This is only applicable when the spectator is attached to the vehicle."),
+    spectator_rotation: Optional[List[float]] = T.Option([-15.0, 0.0, 0.0], help="The rotation offset for the spectator in [pitch, yaw, roll] format. This is only applicable when the spectator is attached to the vehicle."),
     max_simulation_time: Optional[int] = T.Option(100000, help="The maximum time for which the simulation will run."),
     max_vechiles: Optional[int] = T.Option(50, help="The maximum number of vehicles (other than ego) in the Carla environment."),
     vechile_config_dir: Optional[str] = T.Option("./data/config/vehicles", help="The directory containing the configuration files for the vehicles."),
@@ -44,8 +53,17 @@ def generate_synthetic_data(
         hostname=hostname,
         port=port,
         carla_client_timeout=carla_client_timeout,
-        asynchronous=asynchronous,
+        synchronous=synchronous,
         max_simulation_time=max_simulation_time,
+        tm_port=tm_port,
+        tm_hybrid_physics_mode=tm_hybrid_physics_mode,
+        tm_hybrid_physics_radius=tm_hybrid_physics_radius,
+        tm_global_distance_to_leading_vehicle=tm_global_distance_to_leading_vehicle,
+        tm_seed=tm_seed, 
+        spectator_enabled=spectator_enabled,
+        spectator_attachment_mode=spectator_attachment_mode,
+        spectator_location_offset=spectator_location_offset,
+        spectator_rotation=spectator_rotation
     )
     carla_cli.configure_environemnt(
         max_vechiles=max_vechiles,
