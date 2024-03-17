@@ -1,0 +1,77 @@
+blueprint_id: vehicle.lincoln.mkz_2020
+role_name: vehicle_0
+sensors:
+  camera_rgb:
+    - role_name: vehicle_0_camera_rgb_front
+      location:
+        x: 1.5
+        y: 0
+        z: 1.5
+      rotation:
+        pitch: 0
+        yaw: 0
+        roll: 0
+    # - role_name: vehicle_0_camera_rgb_rear
+    #   location:
+    #     x: -1.5
+    #     y: 0
+    #     z: 1.5
+    #   rotation:
+    #     pitch: 0
+    #     yaw: 180
+    #     roll: 0
+    # - role_name: vehicle_0_camera_rgb_left
+    #   location:
+    #     x: 0
+    #     y: -1.5
+    #     z: 1.5
+    #   rotation:
+    #     pitch: 0
+    #     yaw: -90
+    #     roll: 0
+    # - role_name: vehicle_0_camera_rgb_right
+    #   location:
+    #     x: 0
+    #     y: 1.5
+    #     z: 1.5
+    #   rotation:
+    #     pitch: 0
+    #     yaw: 90
+    #     roll: 0
+  camera_depth:
+    - role_name: vehicle_0_camera_depth_front
+      location:
+        x: 1.5
+        y: 0
+        z: 1.5
+      rotation:
+        pitch: 0
+        yaw: 0
+        roll: 0
+  #   - role_name: vehicle_0_camera_depth_rear
+  #     location:
+  #       x: -1.5
+  #       y: 0
+  #       z: 1.5
+  #     rotation:
+  #       pitch: 0
+  #       yaw: 180
+  #       roll: 0
+  #   - role_name: vehicle_0_camera_depth_left
+  #     location:
+  #       x: 0
+  #       y: -1.5
+  #       z: 1.5
+  #     rotation:
+  #       pitch: 0
+  #       yaw: -90
+  #       roll: 0
+  #   - role_name: vehicle_0_camera_depth_right
+  #     location:
+  #       x: 0
+  #       y: 1.5
+  #       z: 1.5
+  #     rotation:
+  #       pitch: 0
+  #       yaw: 90
+  #       roll: 0

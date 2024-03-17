@@ -1,0 +1,6 @@
+[core]
+    remote = local
+['remote "gcs"']
+    url = gs://data-cave/carla
+['remote "local"']
+    url = /media/tyche/hotdsk/data/carla

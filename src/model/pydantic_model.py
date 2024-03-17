@@ -72,6 +72,35 @@ class _BaseActor(BaseModel):
         return self.rotation.to_carla_rotation() if self.rotation else None
 
 
+class Weather(BaseModel):
+
+    """
+    Define the weather model here.
+    """
+    cloudiness: Optional[float] = 0.0
+    precipitation: Optional[float] = 0.0
+    precipitation_deposits: Optional[float] = 0.0
+    wind_intensity: Optional[float] = 0.0
+    sun_azimuth_angle: Optional[float] = 0.0
+    sun_altitude_angle: Optional[float] = 90.0
+    fog_density: Optional[float] = 0.0
+    fog_distance: Optional[float] = 0.0
+    wetness: Optional[float] = 0.0
+    fog_falloff: Optional[float] = 0.0
+    scattering_intensity: Optional[float] = 0.0
+    mie_scattering_scale: Optional[float] = 0.0
+    rayleigh_scattering_scale: Optional[float] = 0.0331
+    dust_storm: Optional[float] = 0.0
+
+
+class World(BaseModel):
+
+    """
+    Define the world model here.
+    """
+    weather: Optional[Weather] = Weather()
+
+
 class _BaseSensor(_BaseActor):
 
     """
@@ -180,12 +209,3 @@ class Walker(_BaseActor):
     is_invincible: Optional[bool] = False
     attach_ai: Optional[bool] = True
     run_probability: Optional[float] = 0.5
-
-
-class World(BaseModel):
-
-    """
-    Define the Carla world here.
-    """
-    vehicles: List[Vehicle] = None
-    walker: List[Walker] = None

@@ -50,6 +50,9 @@ class CarlaClientCLI:
             "spectator_location_offset", [10.0, 0.0, 10.0])
         self.spectator_rotation = kwargs.get(
             "spectator_rotation", [-90.0, 0.0, 0.0])
+        self.map = kwargs.get("map", "Town01")
+        self.map_dir = kwargs.get("map_dir", "/Game/Carla/Maps")
+        self.world_configuration = kwargs.get("world_configuration", "./data/config/town01_default.yaml")
         self.vehicles, self.sensors = [], []
         self.walkers = []
         self.specator = None
@@ -75,25 +78,46 @@ class CarlaClientCLI:
 
     def _init_world(self) -> carla.World:
         """
-        Get the world from the Carla server.
+        Set the world for the Carla server.
         Return: carla.World
         """
         try:
             logger.info(
-                f"{self.__LOG_PREFIX__}: Getting the world from the Carla server")
+                f"{self.__LOG_PREFIX__}: Setting the world for the Carla server | Map: {self.map}.")
+            # Set the world at a higher level
+            self.client.load_world(os.path.join(self.map_dir, self.map))
             world = self.client.get_world()
             settings = world.get_settings()
             settings.synchronous_mode = self.synchronous
             world.apply_settings(settings)
+            # Set the world at a lower level
+            raw_world = PydanticModel.World(**read_yaml(self.world_configuration))
+            world.set_weather(self._init_weather(raw_world.weather.model_dump(mode="json")))
             return world
         except Exception as e:
             logger.error(
-                f"{self.__LOG_PREFIX__}: Error while getting the world from the Carla server: {e}")
+                f"{self.__LOG_PREFIX__}: Error while setting the world for the Carla server: {e}")
+            raise e
+    
+    def _init_weather(self, config: dict) -> carla.WeatherParameters:
+        """
+        Set the weather for the Carla server.
+        Input parameters:
+            - config: dict - the configuration for the weather.
+        Return: carla.WeatherParameters
+        """
+        try:
+            logger.info(
+                f"{self.__LOG_PREFIX__}: Setting the weather for the Carla server")
+            return carla.WeatherParameters(**config)
+        except Exception as e:
+            logger.error(
+                f"{self.__LOG_PREFIX__}: Error while setting the weather from the Carla server: {e}")
             raise e
     
     def _init_traffic_manager(self) -> carla.TrafficManager:
         """
-        Get the traffic manager from the Carla server.
+        Set the traffic manager from the Carla server.
         Return: carla.TrafficManager
         """
         try:
@@ -244,7 +268,7 @@ class CarlaClientCLI:
         """
         try:
             assert self.specator is not None, "Spectator not initialized"
-            _dummy_sensor = CameraRGB(world=self.world, parent=actor, location=carla.Location(*self.spectator_location_offset), rotation=carla.Rotation(*self.spectator_rotation))
+            _dummy_sensor = CameraRGB(world=self.world, parent=actor, location=carla.Location(*self.spectator_location_offset), rotation=carla.Rotation(*self.spectator_rotation), add_listener=False)
             self.specator.set_transform(_dummy_sensor.get_transform())
             return _dummy_sensor
         except Exception as e:

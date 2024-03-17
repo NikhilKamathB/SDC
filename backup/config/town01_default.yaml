@@ -1,0 +1,15 @@
+weather:
+  cloudiness: 0.0
+  precipitation: 0.0
+  precipitation_deposits: 0.0
+  wind_intensity: 0.0
+  sun_azimuth_angle: 0.0
+  sun_altitude_angle: -90.0
+  fog_density: 0.0
+  fog_distance: 0.0
+  wetness: 0.0
+  fog_falloff: 0.0
+  scattering_intensity: 0.0
+  mie_scattering_scale: 0.0
+  rayleigh_scattering_scale: 0.0331
+  dust_storm: 0.0

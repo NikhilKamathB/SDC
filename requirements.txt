@@ -8,6 +8,8 @@ open3d-python
 pytest
 typer
 typer[all]
+dvc
+dvc[gs]
 PyYAML
 python-dotenv
 carla~=0.9.15

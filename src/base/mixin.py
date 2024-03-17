@@ -6,6 +6,7 @@ import carla
 import random
 import logging
 from enum import Enum
+from datetime import datetime
 
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ class ActorMixin:
         self.spawn_on_side = spawn_on_side
         self.spawn_points = self.world.get_map().get_spawn_points()
         self.parent = parent
+        self.init_time = datetime.now().strftime("%Y_%m_%d__%H_%M_%S")
     
     def _pick_random_from_enum(self, enum_class: Enum) -> str:
         """
@@ -191,6 +193,12 @@ class ActorMixin:
             - carla.Transform: the transform of the actor.
         """
         return self.actor.get_transform() if self.actor else None
+    
+    def callback(self, *args, **kwargs) -> None:
+        """
+        Define a callback for the actor.
+        """
+        raise NotImplementedError(f"The callback method is not implemented for the actor {self.actor.id} with blueprint_id {self.blueprint_id} and role_name {self.role_name}")
     
     def __str__(self) -> str:
         """

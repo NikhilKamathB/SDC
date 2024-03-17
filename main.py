@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def generate_synthetic_data(
     hostname: Optional[str] = T.Option(os.getenv("HOSTNAME"), help="The hostname of the Carla server."),
     port: Optional[int] = T.Option(os.getenv("PORT"), help="The port on which the Carla server will be running."),
-    carla_client_timeout: Optional[float] = T.Option(2.0, help="The connection timeout for the Carla client."),
+    carla_client_timeout: Optional[float] = T.Option(10.0, help="The connection timeout for the Carla client."),
     synchronous: Optional[bool] = T.Option(
         True, help="Whether to run the simulation in synchronous mode or not."),
     tm_port: Optional[int] = T.Option(8000, help="The port on which the traffic manager will be running."),
@@ -32,6 +32,7 @@ def generate_synthetic_data(
     tm_hybrid_physics_radius: Optional[float] = T.Option(70.0, help="The radius for the hybrid physics mode."),
     tm_global_distance_to_leading_vehicle: Optional[float] = T.Option(2.5, help="The global distance to the leading vehicle for the traffic manager."),
     tm_seed: Optional[int] = T.Option(42, help="The seed for the traffic manager."),
+    rfps: Optional[int] = T.Option(15, help="Record frame for every `k` steps."),
     spectator_enabled: Optional[bool] = T.Option(True, help="Whether to enable the spectator for custom spawning or not."),
     spectator_attachment_mode: Optional[str] = T.Option("v", help="The mode of attachment for the spectator [d - default, v - vehicle, p - pedestrian]."),
     spectator_location_offset: Optional[List[float]] = T.Option([-7.0, 0.0, 5.0], help="The location offset for the spectator in [x, y, z] format. This is only applicable when the spectator is attached to the vehicle."),
@@ -41,6 +42,10 @@ def generate_synthetic_data(
     vechile_config_dir: Optional[str] = T.Option("./data/config/vehicles", help="The directory containing the configuration files for the vehicles."),
     max_pedestrians: Optional[int] = T.Option(100, help="The maximum number of pedestrians in the Carla environment."),
     pedestrian_config_dir: Optional[str] = T.Option("./data/config/pedestrians", help="The directory containing the configuration files for the pedestrians."),
+    map: Optional[str] = T.Option("Town01", help="The map of the Carla environment. Your options are [Town01, Town01_Opt, Town02, Town02_Opt, Town03, Town03_Opt, Town04, Town04_Opt, Town05, Town05_Opt, Town10HD, Town10HD_Opt]."),
+    map_dir: Optional[str] = T.Option("/Game/Carla/Maps", help="The directory where the maps are stored."),
+    world_configuration: Optional[str] = T.Option("./data/config/town01_default.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
+    output_directory: Optional[str] = T.Option("./data/raw", help="The directory where the generated data will be stored."),
 ) -> None:
     """
     Generate synthetic data from the Carla environment.
@@ -63,7 +68,10 @@ def generate_synthetic_data(
         spectator_enabled=spectator_enabled,
         spectator_attachment_mode=spectator_attachment_mode,
         spectator_location_offset=spectator_location_offset,
-        spectator_rotation=spectator_rotation
+        spectator_rotation=spectator_rotation,
+        map=map,
+        map_dir=map_dir,
+        world_configuration=world_configuration
     )
     carla_cli.configure_environemnt(
         max_vechiles=max_vechiles,
@@ -72,7 +80,11 @@ def generate_synthetic_data(
         pedestrian_config_dir=pedestrian_config_dir
     )
     # Instantiate the data synthesizer and run the simulation.
-    data_synthesizer = DataSynthesizer(carla_client_cli=carla_cli)
+    data_synthesizer = DataSynthesizer(
+        carla_client_cli=carla_cli,
+        rfps=rfps,
+        output_directory=output_directory
+    )
     data_synthesizer.run()
 
 

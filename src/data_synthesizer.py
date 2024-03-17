@@ -16,14 +16,17 @@ class DataSynthesizer:
 
     __LOG_PREFIX__ = "DataSynthesizer"
 
-    def __init__(self, carla_client_cli: CarlaClientCLI) -> None:
+    def __init__(self, carla_client_cli: CarlaClientCLI, *args, **kwargs) -> None:
         """
         Initialize the data synthesizer.
         Input parameters:
             - carla_client_cli: the carla client command line interface that contians the carla world.
+            - args and kwargs: additional arguments.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the data synthesizer")
         self.carla_client_cli = carla_client_cli
+        self.rfps = kwargs.get("rfps", 15)
+        self.output_directory = kwargs.get("output_directory", "./data/raw")
     
     def _set_vehicle_autopilot(self) -> None:
         """
@@ -32,6 +35,14 @@ class DataSynthesizer:
         logger.info(f"{self.__LOG_PREFIX__}: Setting the vehicles to auto pilot mode with the traffic manager port {self.carla_client_cli.tm_port}")
         for vehicle in self.carla_client_cli.vehicles:
             vehicle.set_autopilot(tm_port=self.carla_client_cli.tm_port)
+    
+    def _set_sensor_registry(self) -> None:
+        """
+        Set the sensor registry.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Setting the sensor registry")
+        for sensor in self.carla_client_cli.sensors:
+            sensor.setup_registry(output_directory=self.output_directory, rfps=self.rfps)
     
     def _set_walker_ready(self) -> None:
         """
@@ -66,6 +77,7 @@ class DataSynthesizer:
         Perform any pre-operations before actually ticking the simulator.
         """
         self._set_vehicle_autopilot()
+        self._set_sensor_registry()
         self._set_walker_ready()
         self.carla_client_cli.tick()  # a tick to ensure client receives the recent information
         logger.info(f"{self.__LOG_PREFIX__}: Pre-commit operations completed in {self.carla_client_cli.world.get_snapshot().timestamp.elapsed_seconds - self.carla_client_cli.simulation_start_time} seconds")

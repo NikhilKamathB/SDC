@@ -14,8 +14,10 @@
 *.mp3
 *.mp4
 *.yaml
+**/secrets/
 !vehicle0.yaml
 !pedestrian0.yaml
+!town01_default.yaml
 !dp.png
 
 ### Python ###
@@ -191,3 +193,4 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+/data
