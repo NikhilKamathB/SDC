@@ -11,7 +11,7 @@ from src.base.sensor import CameraRGB
 from src.base.walker import Walker, WalkerAI
 from src.model import (
     enum,
-    pydantic_model as PydanticModel
+    validators as PydanticModel
 )
 from src.utils.utils import read_yaml_file as read_yaml
 
@@ -38,6 +38,7 @@ class CarlaClientCLI:
         self.carla_client_timeout = kwargs.get("carla_client_timeout", 2.0)
         self.max_simulation_time = kwargs.get("max_simulation_time", 100000)
         self.synchronous = kwargs.get("synchronous", True)
+        self.fixed_delta_seconds = kwargs.get("fixed_delta_seconds", 0.05)
         self.tm_port = kwargs.get("tm_port", 8000)
         self.tm_hybrid_physics_mode = kwargs.get("tm_hybrid_physics_mode", True)
         self.tm_hybrid_physics_radius = kwargs.get("tm_hybrid_physics_radius", 70.0)
@@ -89,6 +90,8 @@ class CarlaClientCLI:
             world = self.client.get_world()
             settings = world.get_settings()
             settings.synchronous_mode = self.synchronous
+            if self.synchronous:
+                settings.fixed_delta_seconds = self.fixed_delta_seconds
             world.apply_settings(settings)
             # Set the world at a lower level
             raw_world = PydanticModel.World(**read_yaml(self.world_configuration))
@@ -168,8 +171,18 @@ class CarlaClientCLI:
                     world=self.world,
                     parent=vehicle.actor,
                 )
+                # Spawn the segmentation cameras for the vehicle.
+                vehicle_semantic_segmentation_cameras = raw_vehicle.sensors.create_camera_semantic_segmentation_objects(
+                    world=self.world,
+                    parent=vehicle.actor,
+                )
+                # Spawn the instance segmentation cameras for the vehicle.
+                vehicle_instance_segmentation_cameras = raw_vehicle.sensors.create_camera_instance_segmentation_objects(
+                    world=self.world,
+                    parent=vehicle.actor,
+                )
                 # Update the sensors list.
-                self.sensors += vehicle_rgb_cameras + vehicle_depth_cameras
+                self.sensors += vehicle_rgb_cameras + vehicle_depth_cameras + vehicle_semantic_segmentation_cameras + vehicle_instance_segmentation_cameras
                 # Log the sensors spawned.
                 for sensor in vehicle_rgb_cameras + vehicle_depth_cameras:
                     logger.info(

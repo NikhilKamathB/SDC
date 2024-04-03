@@ -9,7 +9,7 @@ from .base.vehicle import Vehicle
 from .client import CarlaClientCLI
 from .base.walker import Walker, WalkerAI
 from .data_synthesizer import DataSynthesizer
-from .model import pydantic_model as PydanticModel
+from .model import validators as PydanticModel
 from .utils.logger import __setup_logger__
 from .utils.utils import (
     print_param_table,
