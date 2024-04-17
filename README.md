@@ -58,28 +58,6 @@ SDC Repo.
 |- requirements.txt (holds dependencies)
 ```
 
-## Tasks 📋
-- [ ] Define handlers to spawn/activate/configure entities
-    - [X] Vehicles
-    - [X] Pedestrians
-    - [ ] Maps
-    - [ ] Weather and time
-- [ ] Data acquisition
-    - [X] Spawn random actors - vehicles, pedestrians and sensors
-    - [ ] Spawn props in the environment
-    - [ ] Capture snapshots from various onboard sensors for a given actor/player (if applicable)
-        - [ ] RGB Camer
-        - [ ] Depth Camera
-        - [ ] LIDAR
-        - [ ] GPS
-        - [ ] IMU
-        - [ ] RADAR
-        - [ ] SONAR
-- [ ] High level motion planning
-- [ ] State estimation and localization
-- [ ] Build perception stack
-- [ ] Low level motion planning
-
 ## How do I run the Carla client? 🏃🏻‍♂️
 The codebase is designed such that all commands needed for the execution of the client resides in `main.py` - aka the driver module. We establish the Carla client as a CLI application using which they can perform tasks such as data annotaion, automation, basically any ascpect of the self-driving car.
 
