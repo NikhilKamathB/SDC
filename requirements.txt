@@ -13,5 +13,3 @@ dvc[gs]
 PyYAML
 python-dotenv
 carla~=0.9.15
-# For Simpan
-celery~=5.4.0
