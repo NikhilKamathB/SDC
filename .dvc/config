@@ -1,5 +1,6 @@
 [core]
     remote = local
+    autostage = true
 ['remote "gcs"']
     url = gs://data-cave/carla
 ['remote "local"']

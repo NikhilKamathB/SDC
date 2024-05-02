@@ -22,7 +22,7 @@ class Walker(ActorMixin):
 
     def __init__(self, 
                  world: carla.World,
-                 blueprint_id: str = WalkerType.pedestrian_1_1.value,
+                 blueprint_id: str = WalkerType.PEDESTRIAN_1_1.value,
                  role_name: str = "walker", 
                  location: carla.Location = None,
                  rotation: carla.Rotation = None,

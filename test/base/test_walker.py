@@ -51,7 +51,7 @@ class TestWalkerAI:
         try:
             world = init_client
             walker = Walker(
-                world, blueprint_id=WalkerType.pedestrian_1_3.value)
+                world, blueprint_id=WalkerType.PEDESTRIAN_1_3.value)
             if walker.actor is None:
                 pytest.skip(
                     "Walker actor is not spawned, try with other blueprint/spawn points")
@@ -70,7 +70,7 @@ class TestWalkerAI:
         try:
             world = init_client
             walker = Walker(
-                world, blueprint_id=WalkerType.pedestrian_1_3.value)
+                world, blueprint_id=WalkerType.PEDESTRIAN_1_3.value)
             if walker.actor is None:
                 pytest.skip("Walker actor is not spawned, try with other blueprint/spawn points")
             location = carla.Location(x=0, y=0, z=0.5)

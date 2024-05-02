@@ -3,13 +3,14 @@
 ################################################################################################################
 
 import os
+import glob
 import logging
 import typer as T
 from dotenv import load_dotenv
 from typing import Optional, List
 from src import print_param_table, read_yaml, write_yaml
 from src import (
-    CarlaClientCLI, DataSynthesizer,
+    CarlaClientCLI, DataSynthesizer, SensorConvertorType,
     generate_vehicle_config, generate_pedestrian_config
 )
 
@@ -45,7 +46,7 @@ def generate_synthetic_data(
     pedestrian_config_dir: Optional[str] = T.Option("./data/config/pedestrians", help="The directory containing the configuration files for the pedestrians."),
     map: Optional[str] = T.Option("Town01", help="The map of the Carla environment. Your options are [Town01, Town01_Opt, Town02, Town02_Opt, Town03, Town03_Opt, Town04, Town04_Opt, Town05, Town05_Opt, Town10HD, Town10HD_Opt]."),
     map_dir: Optional[str] = T.Option("/Game/Carla/Maps", help="The directory where the maps are stored."),
-    world_configuration: Optional[str] = T.Option("./data/config/town01_default.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
+    world_configuration: Optional[str] = T.Option("./data/config/world0.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
     output_directory: Optional[str] = T.Option("./data/raw", help="The directory where the generated data will be stored."),
 ) -> None:
     """
@@ -108,6 +109,7 @@ def generate_configuration(
         parmas=locals(), title="Parameters for `generate_vehicle_configuration(...)`")
     assert (for_vehicle and for_pedestrian) == False, "Only one of `for_vehicle` and `for_pedestrian` can be True."
     try:
+        logger.info("Generating configuration files for the actors...")
         # Read the reference configuration file.
         reference_configuration = read_yaml(reference_config_file)
         # Generate the configuration files for the actor.
@@ -123,6 +125,53 @@ def generate_configuration(
     except Exception as e:
         logger.error(f"An error occurred while generating the configuration file: {e}")
         raise e
+    
+
+@__app__.command(name="generate_synthetic_data_report", help="This command generates report for all data generated synthetically.")
+def generate_synthetic_data_report(
+    data_dir: Optional[str] = T.Option("./data/raw", help="The directory where the synthetic data is stored."),
+    output_dir: Optional[str] = T.Option("./data/interim", help="The directory where the reports will be stored."),
+    prefix_tag: Optional[bool] = T.Option(False, help="Whether to prefix the data type as the tag within the report."),
+    prefix_dir: Optional[bool] = T.Option(False, help="Whether to prefix the data file with the directory within the report."),
+    need_file_name: Optional[bool] = T.Option(False, help="Whether to include the file name in the report.")
+) -> None:
+    """
+    Generate report for the synthetic data generated.
+    """
+    # Print the configuration of this function.
+    print_param_table(
+        parmas=locals(), title="Parameters for `generate_synthetic_data_report(...)`")
+    # Generate the report for the synthetic data.
+    try:
+        logger.info("Generating report for the synthetic data...")
+        os.makedirs(output_dir, exist_ok=True)
+        for convertor_type in SensorConvertorType:
+            name, value = convertor_type.name, convertor_type.value
+            logger.info(f"Generating report for {name}...")
+            files = glob.glob(os.path.join(data_dir, "**", f"*_{value}.*"), recursive=True)
+            # Handle logaritmic depth image reports when generating for depth images - remove the logaritmic depth image files - check pattern matching
+            if value == SensorConvertorType.DEPTH.value:
+                files = [file for file in files if SensorConvertorType.LOGARITHMIC_DEPTH.value not in file]
+            with open(os.path.join(output_dir, f"{value}.txt"), "w") as f:
+                for file in files:
+                    line = ""
+                    file_name = file.split("/")[-1]
+                    timestamp = file_name.split('_')[1]
+                    line += str(timestamp) + ' '
+                    if prefix_tag:
+                        prefix_tag_file_name = os.path.join(value, file_name)
+                        line += prefix_tag_file_name + ' '
+                    if prefix_dir:
+                        prefix_dir_file_name = os.path.join(*file.split("/")[-2:])
+                        line += prefix_dir_file_name + ' '
+                    if need_file_name:
+                        line += file_name + ' '
+                    line += '\n'
+                    f.write(line)
+    except Exception as e:
+        logger.error(f"An error occurred while generating the synthetic data report: {e}")
+        raise e
+
 
 
 if __name__ == "__main__":

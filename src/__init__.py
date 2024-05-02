@@ -8,6 +8,7 @@ from pathlib import Path
 from .base.vehicle import Vehicle
 from .client import CarlaClientCLI
 from .base.walker import Walker, WalkerAI
+from .model.enum import SensorConvertorType
 from .data_synthesizer import DataSynthesizer
 from .model import validators as PydanticModel
 from .utils.logger import __setup_logger__
@@ -23,7 +24,7 @@ from .utils.utils import (
 __PATH_FILE__ = Path(__file__)
 __PATH_PKG__ = __PATH_FILE__.parent
 __PATH_ROOT__ = __PATH_FILE__.parent.parent
-__LOGGING_DIR__ = f"{__PATH_ROOT__}/logs"
+__LOGGING_DIR__ = os.getenv("LOGGING_DIR", f"{__PATH_ROOT__}/logs")
 __LOGGING_LEVEL__ = logging.INFO
 
 if not os.path.exists(__LOGGING_DIR__):
@@ -41,5 +42,6 @@ __all__ = [
     "DataSynthesizer",
     "CarlaClientCLI", 
     "generate_vehicle_config",
-    "generate_pedestrian_config"
+    "generate_pedestrian_config",
+    "SensorConvertorType"
 ]

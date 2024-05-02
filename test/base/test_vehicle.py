@@ -23,7 +23,7 @@ class TestVehicle:
                 "Vehicle actor is not spawned, try with other blueprint/spawn points")
         vehicle.open_door()
         vehicle.close_door()
-        vehicle.set_light_state(light_state=VehicleLightState.LowBeam.value)
+        vehicle.set_light_state(light_state=VehicleLightState.LOW_BEAM.value)
         _ = vehicle.get_light_state()
         vehicle.set_autopilot()
         vehicle.unset_autopilot()

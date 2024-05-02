@@ -6,6 +6,7 @@ import os
 import carla
 import logging
 from src.base.mixin import ActorMixin
+from src.model.enum import SensorConvertorType
 
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ class CameraRGB(SensorMixin):
         if kwargs.get("add_listener", True):
             logger.info(f"{self.__LOG_PREFIX__}: Adding the callback listener for the RGB camera")
             self.actor.listen(lambda sensor_data: self.callback(sensor_data, convertor=[
-                ("rgb", carla.ColorConverter.Raw),
+                (SensorConvertorType.RGB.value, carla.ColorConverter.Raw),
             ]))
 
 
@@ -152,8 +153,8 @@ class CameraDepth(SensorMixin):
                 f"{self.__LOG_PREFIX__}: Adding the callback listener for the depth camera")
             self.actor.listen(lambda sensor_data: self.callback(
                 sensor_data, convertor=[
-                    ("depth", carla.ColorConverter.Depth),
-                    ("logarithmic_depth", carla.ColorConverter.LogarithmicDepth),
+                    (SensorConvertorType.DEPTH.value, carla.ColorConverter.Depth),
+                    (SensorConvertorType.LOGARITHMIC_DEPTH.value, carla.ColorConverter.LogarithmicDepth),
                 ]))
 
 
@@ -202,7 +203,7 @@ class CameraSemanticSegmentation(SensorMixin):
             logger.info(
                 f"{self.__LOG_PREFIX__}: Adding the callback listener for the semantic segmentation camera")
             self.actor.listen(lambda sensor_data: self.callback(sensor_data, convertor=[
-                ("semantic_segmentation", carla.ColorConverter.CityScapesPalette),
+                (SensorConvertorType.SEMANTIC_SEGMENTATION.value, carla.ColorConverter.CityScapesPalette),
             ]))
 
 
@@ -251,5 +252,5 @@ class CameraInstanceSegmentation(SensorMixin):
             logger.info(
                 f"{self.__LOG_PREFIX__}: Adding the callback listener for the instance segmentation camera")
             self.actor.listen(lambda sensor_data: self.callback(sensor_data, convertor=[
-                ("instance_segmentation", carla.ColorConverter.Raw),
+                (SensorConvertorType.INSTANCE_SEGMENTATION.value, carla.ColorConverter.Raw),
             ]))

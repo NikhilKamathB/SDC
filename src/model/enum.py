@@ -6,48 +6,57 @@ import carla
 from enum import Enum
 
 
+class SensorConvertorType(Enum):
+
+    """
+    Define the different types of sensor convertors.
+    """
+    RGB = "rgb"
+    DEPTH = "depth"
+    LOGARITHMIC_DEPTH = "logarithmic_depth"
+    SEMANTIC_SEGMENTATION = "semantic_segmentation"
+    INSTANCE_SEGMENTATION = "instance_segmentation"
+
+
 class SpectatorAttachmentMode(Enum):
 
     """
     Define spectator atttachment mode.
     """
     
-    Default = "d"
-    Vehicle = "v"
-    Pedestrian = "p"
+    DEFAULT = "d"
+    VEHICLE = "v"
+    PEDESTRIAN = "p"
+
 
 class VehicleDoor(Enum):
-
     """
     Define the different doors of a vehicle.
     """
-
-    All = carla.VehicleDoor.All
-    FrontLeft = carla.VehicleDoor.FL
-    FrontRight = carla.VehicleDoor.FR
-    RearLeft = carla.VehicleDoor.RL
-    RearRight = carla.VehicleDoor.RR
+    ALL = carla.VehicleDoor.All
+    FRONT_LEFT = carla.VehicleDoor.FL
+    FRONT_RIGHT = carla.VehicleDoor.FR
+    REAR_LEFT = carla.VehicleDoor.RL
+    REAR_RIGHT = carla.VehicleDoor.RR
 
 
 class VehicleLightState(Enum):
-
     """
     Define the different lights of a vehicle.
     """
-
-    All = carla.VehicleLightState.All
-    NoneLight = carla.VehicleLightState.NONE
-    Position = carla.VehicleLightState.Position
-    LowBeam = carla.VehicleLightState.LowBeam
-    HighBeam = carla.VehicleLightState.HighBeam
-    Brake = carla.VehicleLightState.Brake
-    RightBlinker = carla.VehicleLightState.RightBlinker
-    LeftBlinker = carla.VehicleLightState.LeftBlinker
-    Reverse = carla.VehicleLightState.Reverse
-    Fog = carla.VehicleLightState.Fog
-    Interior = carla.VehicleLightState.Interior
-    Special1 = carla.VehicleLightState.Special1
-    Special2 = carla.VehicleLightState.Special2
+    ALL = carla.VehicleLightState.All
+    NONE = carla.VehicleLightState.NONE
+    POSITION = carla.VehicleLightState.Position
+    LOW_BEAM = carla.VehicleLightState.LowBeam
+    HIGH_BEAM = carla.VehicleLightState.HighBeam
+    BRAKE = carla.VehicleLightState.Brake
+    RIGHT_BLINKER = carla.VehicleLightState.RightBlinker
+    LEFT_BLINKER = carla.VehicleLightState.LeftBlinker
+    REVERSE = carla.VehicleLightState.Reverse
+    FOG = carla.VehicleLightState.Fog
+    INTERIOR = carla.VehicleLightState.Interior
+    SPECIAL_1 = carla.VehicleLightState.Special1
+    SPECIAL_2 = carla.VehicleLightState.Special2
 
 
 class Gen1VehicleType(Enum):
@@ -108,56 +117,54 @@ class Gen2VehicleType(Enum):
 
 
 class WalkerType(Enum):
-
     """
     Define the different types of walkers that can be spawned in the environment.
     """
-
-    pedestrian_1_1 = "walker.pedestrian.0001"
-    pedestrian_1_2 = "walker.pedestrian.0005"
-    pedestrian_1_3 = "walker.pedestrian.0006"
-    pedestrian_1_4 = "walker.pedestrian.0007"
-    pedestrian_1_5 = "walker.pedestrian.0008"
-    pedestrian_2_1 = "walker.pedestrian.0004"
-    pedestrian_2_2 = "walker.pedestrian.0003"
-    pedestrian_2_3 = "walker.pedestrian.0002"
-    pedestrian_3_1 = "walker.pedestrian.0015"
-    pedestrian_3_2 = "walker.pedestrian.0019"
-    pedestrian_4_1 = "walker.pedestrian.0016"
-    pedestrian_4_2 = "walker.pedestrian.0017"
-    pedestrian_5_1 = "walker.pedestrian.0026"
-    pedestrian_5_2 = "walker.pedestrian.0018"
-    pedestrian_6_1 = "walker.pedestrian.0021"
-    pedestrian_6_2 = "walker.pedestrian.0020"
-    pedestrian_7_1 = "walker.pedestrian.0023"
-    pedestrian_7_2 = "walker.pedestrian.0022"
-    pedestrian_8_1 = "walker.pedestrian.0024"
-    pedestrian_8_2 = "walker.pedestrian.0025"
-    pedestrian_9_1 = "walker.pedestrian.0027"
-    pedestrian_9_2 = "walker.pedestrian.0029"
-    pedestrian_9_3 = "walker.pedestrian.0028"
-    pedestrian_10_1 = "walker.pedestrian.0041"
-    pedestrian_10_2 = "walker.pedestrian.0040"
-    pedestrian_10_3 = "walker.pedestrian.0033"
-    pedestrian_10_4 = "walker.pedestrian.0031"
-    pedestrian_11_1 = "walker.pedestrian.0034"
-    pedestrian_11_2 = "walker.pedestrian.0038"
-    pedestrian_12_1 = "walker.pedestrian.0035"
-    pedestrian_12_2 = "walker.pedestrian.0036"
-    pedestrian_12_3 = "walker.pedestrian.0037"
-    pedestrian_13_1 = "walker.pedestrian.0039"
-    pedestrian_14_1 = "walker.pedestrian.0042"
-    pedestrian_14_2 = "walker.pedestrian.0043"
-    pedestrian_14_3 = "walker.pedestrian.0044"
-    pedestrian_15_1 = "walker.pedestrian.0047"
-    pedestrian_15_2 = "walker.pedestrian.0046"
-    pedestrian_c_1_1 = "walker.pedestrian.0011"
-    pedestrian_c_1_2 = "walker.pedestrian.0010"
-    pedestrian_c_1_3 = "walker.pedestrian.0009"
-    pedestrian_c_2_1 = "walker.pedestrian.0014"
-    pedestrian_c_2_2 = "walker.pedestrian.0013"
-    pedestrian_c_2_3 = "walker.pedestrian.0012"
-    pedestrian_c_3_1 = "walker.pedestrian.0048"
-    pedestrian_c_4_1 = "walker.pedestrian.0049"
-    pedestrian_p_1 = "walker.pedestrian.0030"
-    pedestrian_p_2 = "walker.pedestrian.0032"
+    PEDESTRIAN_1_1 = "walker.pedestrian.0001"
+    PEDESTRIAN_1_2 = "walker.pedestrian.0005"
+    PEDESTRIAN_1_3 = "walker.pedestrian.0006"
+    PEDESTRIAN_1_4 = "walker.pedestrian.0007"
+    PEDESTRIAN_1_5 = "walker.pedestrian.0008"
+    PEDESTRIAN_2_1 = "walker.pedestrian.0004"
+    PEDESTRIAN_2_2 = "walker.pedestrian.0003"
+    PEDESTRIAN_2_3 = "walker.pedestrian.0002"
+    PEDESTRIAN_3_1 = "walker.pedestrian.0015"
+    PEDESTRIAN_3_2 = "walker.pedestrian.0019"
+    PEDESTRIAN_4_1 = "walker.pedestrian.0016"
+    PEDESTRIAN_4_2 = "walker.pedestrian.0017"
+    PEDESTRIAN_5_1 = "walker.pedestrian.0026"
+    PEDESTRIAN_5_2 = "walker.pedestrian.0018"
+    PEDESTRIAN_6_1 = "walker.pedestrian.0021"
+    PEDESTRIAN_6_2 = "walker.pedestrian.0020"
+    PEDESTRIAN_7_1 = "walker.pedestrian.0023"
+    PEDESTRIAN_7_2 = "walker.pedestrian.0022"
+    PEDESTRIAN_8_1 = "walker.pedestrian.0024"
+    PEDESTRIAN_8_2 = "walker.pedestrian.0025"
+    PEDESTRIAN_9_1 = "walker.pedestrian.0027"
+    PEDESTRIAN_9_2 = "walker.pedestrian.0029"
+    PEDESTRIAN_9_3 = "walker.pedestrian.0028"
+    PEDESTRIAN_10_1 = "walker.pedestrian.0041"
+    PEDESTRIAN_10_2 = "walker.pedestrian.0040"
+    PEDESTRIAN_10_3 = "walker.pedestrian.0033"
+    PEDESTRIAN_10_4 = "walker.pedestrian.0031"
+    PEDESTRIAN_11_1 = "walker.pedestrian.0034"
+    PEDESTRIAN_11_2 = "walker.pedestrian.0038"
+    PEDESTRIAN_12_1 = "walker.pedestrian.0035"
+    PEDESTRIAN_12_2 = "walker.pedestrian.0036"
+    PEDESTRIAN_12_3 = "walker.pedestrian.0037"
+    PEDESTRIAN_13_1 = "walker.pedestrian.0039"
+    PEDESTRIAN_14_1 = "walker.pedestrian.0042"
+    PEDESTRIAN_14_2 = "walker.pedestrian.0043"
+    PEDESTRIAN_14_3 = "walker.pedestrian.0044"
+    PEDESTRIAN_15_1 = "walker.pedestrian.0047"
+    PEDESTRIAN_15_2 = "walker.pedestrian.0046"
+    PEDESTRIAN_C_1_1 = "walker.pedestrian.0011"
+    PEDESTRIAN_C_1_2 = "walker.pedestrian.0010"
+    PEDESTRIAN_C_1_3 = "walker.pedestrian.0009"
+    PEDESTRIAN_C_2_1 = "walker.pedestrian.0014"
+    PEDESTRIAN_C_2_2 = "walker.pedestrian.0013"
+    PEDESTRIAN_C_2_3 = "walker.pedestrian.0012"
+    PEDESTRIAN_C_3_1 = "walker.pedestrian.0048"
+    PEDESTRIAN_C_4_1 = "walker.pedestrian.0049"
+    PEDESTRIAN_P_1 = "walker.pedestrian.0030"
+    PEDESTRIAN_P_2 = "walker.pedestrian.0032"

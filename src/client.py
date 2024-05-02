@@ -46,7 +46,7 @@ class CarlaClientCLI:
         self.tm_seed = kwargs.get("tm_seed", 42)
         self.spectator_enabled= kwargs.get("spectator_enabled", True)
         self.spectator_attachment_mode = kwargs.get(
-            "spectator_attachment_mode", enum.SpectatorAttachmentMode.Vehicle.value)
+            "spectator_attachment_mode", enum.SpectatorAttachmentMode.VEHICLE.value)
         self.spectator_location_offset = kwargs.get(
             "spectator_location_offset", [10.0, 0.0, 10.0])
         self.spectator_rotation = kwargs.get(
@@ -296,10 +296,10 @@ class CarlaClientCLI:
             f"{self.__LOG_PREFIX__}: Spawning the spectator in the Carla environment")
         try:
             self.specator = self.world.get_spectator()
-            if self.spectator_enabled and self.spectator_attachment_mode != enum.SpectatorAttachmentMode.Default.value:
-                if self.spectator_attachment_mode == enum.SpectatorAttachmentMode.Vehicle.value:
+            if self.spectator_enabled and self.spectator_attachment_mode != enum.SpectatorAttachmentMode.DEFAULT.value:
+                if self.spectator_attachment_mode == enum.SpectatorAttachmentMode.VEHICLE.value:
                     _actor = random.choice(self.vehicles)
-                elif self.spectator_attachment_mode == enum.SpectatorAttachmentMode.Pedestrian.value:
+                elif self.spectator_attachment_mode == enum.SpectatorAttachmentMode.PEDESTRIAN.value:
                     _actor = random.choice(self.walkers)[0] # Get the walker and not the controller
                 else:
                     return None

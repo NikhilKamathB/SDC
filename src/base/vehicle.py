@@ -44,7 +44,7 @@ class Vehicle(ActorMixin):
                          spawn_on_road=True, spawn_on_side=False)
         self._build(**kwargs)
         
-    def close_door(self, door_id: carla.VehicleDoor = VehicleDoor.All.value, is_random: bool = False) -> bool:
+    def close_door(self, door_id: carla.VehicleDoor = VehicleDoor.ALL.value, is_random: bool = False) -> bool:
         """
         Close the door of the vehicle.
         Input parameters:
@@ -63,7 +63,7 @@ class Vehicle(ActorMixin):
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while closing the door of the vehicle with id {self.actor.id} | {self.blueprint_id} | {door_id} | {e}")
             return False
     
-    def open_door(self, door_id: carla.VehicleDoor = VehicleDoor.All.value, is_random: bool = False) -> bool:
+    def open_door(self, door_id: carla.VehicleDoor = VehicleDoor.ALL.value, is_random: bool = False) -> bool:
         """
         Open the door of the vehicle.
         Input parameters:
@@ -82,7 +82,7 @@ class Vehicle(ActorMixin):
             logger.error(f"{self.__LOG_PREFIX__}: An error occurred while opening the door of the vehicle with id {self.actor.id} | {self.blueprint_id} | {door_id} | {e}")
             return False
     
-    def set_light_state(self, light_state: carla.VehicleLightState = VehicleLightState.NoneLight.value, is_random: bool = False) -> bool:
+    def set_light_state(self, light_state: carla.VehicleLightState = VehicleLightState.NONE.value, is_random: bool = False) -> bool:
         """
         Set the light state of the vehicle.
         Input parameters:
