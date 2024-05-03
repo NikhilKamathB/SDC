@@ -35,7 +35,7 @@ def generate_synthetic_data(
     tm_hybrid_physics_radius: Optional[float] = T.Option(70.0, help="The radius for the hybrid physics mode."),
     tm_global_distance_to_leading_vehicle: Optional[float] = T.Option(2.5, help="The global distance to the leading vehicle for the traffic manager."),
     tm_seed: Optional[int] = T.Option(42, help="The seed for the traffic manager."),
-    tm_speed: Optional[float] = T.Option(TMActorSpeedMode.DEFAULT, help="The speed for actors controlled by the traffic manager."),
+    tm_speed: Optional[float] = T.Option(TMActorSpeedMode.DEFAULT.value, help="The speed for actors controlled by the traffic manager."),
     rfps: Optional[int] = T.Option(None, help="Record frame for every `k` steps - if provided, it will override the `rfps` in the sensor configuration."),
     spectator_enabled: Optional[bool] = T.Option(True, help="Whether to enable the spectator for custom spawning or not."),
     spectator_attachment_mode: Optional[str] = T.Option(SpectatorAttachmentMode.VEHICLE.value, help="The mode of attachment for the spectator [d - default, v - vehicle, p - pedestrian]."),
