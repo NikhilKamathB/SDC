@@ -133,7 +133,7 @@ def generate_configuration(
 @__app__.command(name="generate_synthetic_data_report", help="This command generates report for all data generated synthetically.")
 def generate_synthetic_data_report(
     data_dir: Optional[str] = T.Option("./data/raw", help="The directory where the synthetic data is stored."),
-    output_dir: Optional[str] = T.Option("./data/interim", help="The directory where the reports will be stored."),
+    output_directory: Optional[str] = T.Option("./data/interim", help="The directory where the reports will be stored."),
     prefix_tag: Optional[bool] = T.Option(False, help="Whether to prefix the data type as the tag within the report."),
     prefix_dir: Optional[bool] = T.Option(False, help="Whether to prefix the data file with the directory within the report."),
     need_file_name: Optional[bool] = T.Option(False, help="Whether to include the file name in the report.")
@@ -147,7 +147,7 @@ def generate_synthetic_data_report(
     # Generate the report for the synthetic data.
     try:
         logger.info("Generating report for the synthetic data")
-        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(output_directory, exist_ok=True)
         for convertor_type in SensorConvertorType:
             name, value = convertor_type.name, convertor_type.value
             logger.info(f"Generating report for {name}")
@@ -156,7 +156,7 @@ def generate_synthetic_data_report(
             if value == SensorConvertorType.DEPTH.value:
                 files = [file for file in files if SensorConvertorType.LOGARITHMIC_DEPTH.value not in file]
             if files:
-                output_file = os.path.join(output_dir, f"{value}.txt")
+                output_file = os.path.join(output_directory, f"{value}.txt")
                 write_txt_report_style_1(files, output_file, value, prefix_tag, prefix_dir, need_file_name)
     except Exception as e:
         logger.error(f"An error occurred while generating the synthetic data report: {e}")
