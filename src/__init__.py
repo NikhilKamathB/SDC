@@ -8,9 +8,9 @@ from pathlib import Path
 from .base.vehicle import Vehicle
 from .client import CarlaClientCLI
 from .base.walker import Walker, WalkerAI
-from .model.enum import SensorConvertorType
 from .data_synthesizer import DataSynthesizer
 from .model import validators as PydanticModel
+from .model.enum import SensorConvertorType, SpectatorAttachmentMode, TMActorSpeedMode
 from .utils.logger import __setup_logger__
 from .utils.utils import (
     print_param_table,
@@ -18,6 +18,7 @@ from .utils.utils import (
     write_yaml_file as write_yaml,
     generate_vehicle_configuration_dict as generate_vehicle_config,
     generate_pedestrian_configuration_dict as generate_pedestrian_config,
+    write_txt_report_style_1
 )
 
 
@@ -43,5 +44,8 @@ __all__ = [
     "CarlaClientCLI", 
     "generate_vehicle_config",
     "generate_pedestrian_config",
-    "SensorConvertorType"
+    "write_txt_report_style_1",
+    "SpectatorAttachmentMode",
+    "SensorConvertorType",
+    "TMActorSpeedMode"
 ]

@@ -142,6 +142,7 @@ class CameraRGB(_BaseCameraSensor, _BaseCameraLens):
     """
     blueprint_id: Optional[str] = "sensor.camera.rgb"
     enable_postprocess_effects: Optional[bool] = True
+    focal_distance: Optional[float] = 1000.0
 
 
 class CameraDepth(_BaseCameraSensor, _BaseCameraLens):

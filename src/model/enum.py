@@ -29,6 +29,20 @@ class SpectatorAttachmentMode(Enum):
     PEDESTRIAN = "p"
 
 
+class TMActorSpeedMode(Enum):
+    
+    """
+    Define the different speed modes for the traffic manager actors in km/h.
+    """
+    DEFAULT = 60.0
+    SLOW = 15.0
+    NORMAL = 45.0
+    FAST = 80.0
+    MIN = 0.0
+    MAX = 100.0
+    RANDOM = -1.0
+
+
 class VehicleDoor(Enum):
     """
     Define the different doors of a vehicle.

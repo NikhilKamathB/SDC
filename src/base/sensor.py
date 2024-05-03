@@ -23,6 +23,7 @@ class SensorMixin(ActorMixin):
         Setup the registry for the sensor.
         Input parameters:
             - output_directory: the output directory where the sensor data would be stored.
+            - rfps: the record every n frames per second.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting up the registry for the sensor")
         if rfps is None and self.rfps is None \

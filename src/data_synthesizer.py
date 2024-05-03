@@ -2,8 +2,11 @@
 # Script for generating any kind of synthetic data and storing it to a destined location.
 ################################################################################################################
 
+import random
 import logging
 from src.client import CarlaClientCLI
+from src.model.enum import TMActorSpeedMode
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,13 @@ class DataSynthesizer:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting the vehicles to auto pilot mode with the traffic manager port {self.carla_client_cli.tm_port}")
         for vehicle in self.carla_client_cli.vehicles:
+            # Set speed
+            if self.carla_client_cli.tm_speed == TMActorSpeedMode.RANDOM.value:
+                self.carla_client_cli.traffic_manager.set_desired_speed(vehicle.actor, random.uniform(TMActorSpeedMode.MIN.value, TMActorSpeedMode.MAX.value))
+            else:
+                self.carla_client_cli.traffic_manager.set_desired_speed(
+                    vehicle.actor, self.carla_client_cli.tm_speed)
+            # Set autopilot
             vehicle.set_autopilot(tm_port=self.carla_client_cli.tm_port)
     
     def _set_sensor_registry(self) -> None:

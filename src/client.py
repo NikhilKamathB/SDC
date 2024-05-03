@@ -44,6 +44,7 @@ class CarlaClientCLI:
         self.tm_hybrid_physics_radius = kwargs.get("tm_hybrid_physics_radius", 70.0)
         self.tm_global_distance_to_leading_vehicle = kwargs.get("tm_global_distance_to_leading_vehicle", 2.5)
         self.tm_seed = kwargs.get("tm_seed", 42)
+        self.tm_speed = kwargs.get("tm_speed", enum.TMActorSpeedMode.DEFAULT.value)
         self.spectator_enabled= kwargs.get("spectator_enabled", True)
         self.spectator_attachment_mode = kwargs.get(
             "spectator_attachment_mode", enum.SpectatorAttachmentMode.VEHICLE.value)

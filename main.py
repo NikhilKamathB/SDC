@@ -10,8 +10,9 @@ from dotenv import load_dotenv
 from typing import Optional, List
 from src import print_param_table, read_yaml, write_yaml
 from src import (
-    CarlaClientCLI, DataSynthesizer, SensorConvertorType,
-    generate_vehicle_config, generate_pedestrian_config
+    CarlaClientCLI, DataSynthesizer, SensorConvertorType, SpectatorAttachmentMode, TMActorSpeedMode,
+    generate_vehicle_config, generate_pedestrian_config,
+    write_txt_report_style_1
 )
 
 
@@ -23,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 @__app__.command(name="generate_synthetic_data", help="This command generates synthetic data from various sensors in the Carla environment.")
 def generate_synthetic_data(
-    hostname: Optional[str] = T.Option(os.getenv("HOSTNAME"), help="The hostname of the Carla server."),
-    port: Optional[int] = T.Option(os.getenv("PORT"), help="The port on which the Carla server will be running."),
+    hostname: Optional[str] = T.Option(os.getenv("HOSTNAME", "localhost"), help="The hostname of the Carla server."),
+    port: Optional[int] = T.Option(os.getenv("PORT", 2000), help="The port on which the Carla server will be running."),
     carla_client_timeout: Optional[float] = T.Option(10.0, help="The connection timeout for the Carla client."),
     synchronous: Optional[bool] = T.Option(
         True, help="Whether to run the simulation in synchronous mode or not."),
@@ -34,9 +35,10 @@ def generate_synthetic_data(
     tm_hybrid_physics_radius: Optional[float] = T.Option(70.0, help="The radius for the hybrid physics mode."),
     tm_global_distance_to_leading_vehicle: Optional[float] = T.Option(2.5, help="The global distance to the leading vehicle for the traffic manager."),
     tm_seed: Optional[int] = T.Option(42, help="The seed for the traffic manager."),
+    tm_speed: Optional[float] = T.Option(TMActorSpeedMode.DEFAULT, help="The speed for actors controlled by the traffic manager."),
     rfps: Optional[int] = T.Option(None, help="Record frame for every `k` steps - if provided, it will override the `rfps` in the sensor configuration."),
     spectator_enabled: Optional[bool] = T.Option(True, help="Whether to enable the spectator for custom spawning or not."),
-    spectator_attachment_mode: Optional[str] = T.Option("v", help="The mode of attachment for the spectator [d - default, v - vehicle, p - pedestrian]."),
+    spectator_attachment_mode: Optional[str] = T.Option(SpectatorAttachmentMode.VEHICLE.value, help="The mode of attachment for the spectator [d - default, v - vehicle, p - pedestrian]."),
     spectator_location_offset: Optional[List[float]] = T.Option([-7.0, 0.0, 5.0], help="The location offset for the spectator in [x, y, z] format. This is only applicable when the spectator is attached to the vehicle."),
     spectator_rotation: Optional[List[float]] = T.Option([-15.0, 0.0, 0.0], help="The rotation offset for the spectator in [pitch, yaw, roll] format. This is only applicable when the spectator is attached to the vehicle."),
     max_simulation_time: Optional[int] = T.Option(100000, help="The maximum time for which the simulation will run."),
@@ -67,7 +69,8 @@ def generate_synthetic_data(
         tm_hybrid_physics_mode=tm_hybrid_physics_mode,
         tm_hybrid_physics_radius=tm_hybrid_physics_radius,
         tm_global_distance_to_leading_vehicle=tm_global_distance_to_leading_vehicle,
-        tm_seed=tm_seed, 
+        tm_seed=tm_seed,
+        tm_speed=tm_speed,
         spectator_enabled=spectator_enabled,
         spectator_attachment_mode=spectator_attachment_mode,
         spectator_location_offset=spectator_location_offset,
@@ -143,31 +146,18 @@ def generate_synthetic_data_report(
         parmas=locals(), title="Parameters for `generate_synthetic_data_report(...)`")
     # Generate the report for the synthetic data.
     try:
-        logger.info("Generating report for the synthetic data...")
+        logger.info("Generating report for the synthetic data")
         os.makedirs(output_dir, exist_ok=True)
         for convertor_type in SensorConvertorType:
             name, value = convertor_type.name, convertor_type.value
-            logger.info(f"Generating report for {name}...")
+            logger.info(f"Generating report for {name}")
             files = glob.glob(os.path.join(data_dir, "**", f"*_{value}.*"), recursive=True)
             # Handle logaritmic depth image reports when generating for depth images - remove the logaritmic depth image files - check pattern matching
             if value == SensorConvertorType.DEPTH.value:
                 files = [file for file in files if SensorConvertorType.LOGARITHMIC_DEPTH.value not in file]
-            with open(os.path.join(output_dir, f"{value}.txt"), "w") as f:
-                for file in files:
-                    line = ""
-                    file_name = file.split("/")[-1]
-                    timestamp = file_name.split('_')[1]
-                    line += str(timestamp) + ' '
-                    if prefix_tag:
-                        prefix_tag_file_name = os.path.join(value, file_name)
-                        line += prefix_tag_file_name + ' '
-                    if prefix_dir:
-                        prefix_dir_file_name = os.path.join(*file.split("/")[-2:])
-                        line += prefix_dir_file_name + ' '
-                    if need_file_name:
-                        line += file_name + ' '
-                    line += '\n'
-                    f.write(line)
+            if files:
+                output_file = os.path.join(output_dir, f"{value}.txt")
+                write_txt_report_style_1(files, output_file, value, prefix_tag, prefix_dir, need_file_name)
     except Exception as e:
         logger.error(f"An error occurred while generating the synthetic data report: {e}")
         raise e

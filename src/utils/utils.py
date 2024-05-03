@@ -2,9 +2,11 @@
 # Any utilities used in this projects must be defined here.
 ###################################################################################################
 
+import os
 import yaml
 import string
 import random
+from typing import List
 from rich.table import Table
 from rich.console import Console
 from collections import defaultdict
@@ -118,3 +120,38 @@ def generate_pedestrian_configuration_dict(reference_dict: dict, sample_id: int)
         "attach_ai": attach_ai,
         "run_probability": run_probability
     }
+
+def write_txt_report_style_1(files: List[str], output_file: str, sensor_type: str, prefix_tag: bool = False, prefix_dir: bool = False, need_file_name: bool = False) -> None:
+    """
+    Generate a report in a txt file.
+    Style:
+        <timstamp> <prefix_tag with data file name> <data file name with dir> <data file_name>
+    Input parameters:
+        - files: List[str] - the list of files.
+        - output_file: str - the name of the output file.
+        - sensor_type: str - the type of the sensor.
+        - prefix_tag: bool - whether to prefix the tag or not.
+        - prefix_dir: bool - whether to prefix the directory or not.
+        - need_file_name: bool - whether to include the file name or not.
+    """
+    with open(output_file, "w") as f:
+        res = []
+        for file in files:
+            line = ""
+            file_name = file.split("/")[-1]
+            timestamp = file_name.split('_')[1]
+            line += str(timestamp) + ' '
+            if prefix_tag:
+                prefix_tag_file_name = os.path.join(sensor_type, file_name)
+                line += prefix_tag_file_name + ' '
+            if prefix_dir:
+                prefix_dir_file_name = os.path.join(
+                    *file.split("/")[-2:])
+                line += prefix_dir_file_name + ' '
+            if need_file_name:
+                line += file_name + ' '
+            line += '\n'
+            res.append((float(timestamp), line))
+        res.sort(key=lambda x: x[0])
+        for _, line in res:
+            f.write(line)
