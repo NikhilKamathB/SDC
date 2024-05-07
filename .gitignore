@@ -19,6 +19,7 @@
 !pedestrian0.yaml
 !town01_default.yaml
 !dp.png
+!.gitbook.yaml
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
