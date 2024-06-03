@@ -12,4 +12,5 @@ dvc
 dvc[gs]
 PyYAML
 python-dotenv
+matplotlib
 carla~=0.9.15

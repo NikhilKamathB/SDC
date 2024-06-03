@@ -39,6 +39,7 @@ class CarlaClientCLI:
         self.max_simulation_time = kwargs.get("max_simulation_time", 100000)
         self.synchronous = kwargs.get("synchronous", True)
         self.fixed_delta_seconds = kwargs.get("fixed_delta_seconds", 0.05)
+        self.tm_enabled = kwargs.get("tm_enabled", True)
         self.tm_port = kwargs.get("tm_port", 8000)
         self.tm_hybrid_physics_mode = kwargs.get("tm_hybrid_physics_mode", True)
         self.tm_hybrid_physics_radius = kwargs.get("tm_hybrid_physics_radius", 70.0)
@@ -54,7 +55,7 @@ class CarlaClientCLI:
             "spectator_rotation", [-90.0, 0.0, 0.0])
         self.map = kwargs.get("map", "Town01")
         self.map_dir = kwargs.get("map_dir", "/Game/Carla/Maps")
-        self.world_configuration = kwargs.get("world_configuration", "./data/config/town01_default.yaml")
+        self.world_configuration = kwargs.get("world_configuration", "./data/config/world0.yaml")
         self.vehicles, self.sensors = [], []
         self.walkers = []
         self.specator = None
@@ -71,7 +72,8 @@ class CarlaClientCLI:
             self.client = carla.Client(self.hostname, self.port)
             self.client.set_timeout(self.carla_client_timeout)
             self.world = self._init_world()
-            self.traffic_manager = self._init_traffic_manager()
+            self.carla_map = self.world.get_map()
+            self.traffic_manager = self._init_traffic_manager() if self.tm_enabled else None
             self.simulation_start_time = self.world.get_snapshot().timestamp.elapsed_seconds
         except Exception as e:
             logger.error(
@@ -288,6 +290,7 @@ class CarlaClientCLI:
         except Exception as e:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Error while assisting the spectator movement: {e}")
+            raise e
     
     def _spawn_spectator(self) -> None:
         """
@@ -308,6 +311,7 @@ class CarlaClientCLI:
         except Exception as e:
             logger.error(
                 f"{self.__LOG_PREFIX__}: Error while spawning the spectator in the Carla environment: {e}")
+            raise e
 
     def configure_environemnt(self, *args, **kwargs) -> None:
         """

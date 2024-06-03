@@ -36,6 +36,9 @@ class DataSynthesizer:
         Set the vehicles to auto pilot mode.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting the vehicles to auto pilot mode with the traffic manager port {self.carla_client_cli.tm_port}")
+        if not self.carla_client_cli.tm_enabled:
+            logger.info(f"{self.__LOG_PREFIX__}: Traffic manager is not enabled, skipping the vehicle autopilot setup.")
+            return
         for vehicle in self.carla_client_cli.vehicles:
             # Set speed
             if self.carla_client_cli.tm_speed == TMActorSpeedMode.RANDOM.value:
