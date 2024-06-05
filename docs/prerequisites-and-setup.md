@@ -36,6 +36,7 @@ pip install -r requirements-simpan.txt    # [Optional] - use this with SimPan
   * After installation, log out and log back in to ensure XQuartz starts properly.
   * Upon opening the XQuartz terimal, run `ssh -Y username@remote-server` for secure connection. You may then simply run your script.
   * The downside is that the visualization and communication will have a noticable latency.
+* Another note - if you are using conda environment remember to run `conda install -c conda-forge libstdcxx-ng` wiith your environment active (to solve MESA-LOADER error).&#x20;
 
 ## 🤫 Environment Variables
 
