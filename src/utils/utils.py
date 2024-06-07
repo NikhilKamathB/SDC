@@ -6,6 +6,8 @@ import os
 import yaml
 import string
 import random
+import numpy as np
+import matplotlib.pyplot as plt
 from typing import List
 from rich.table import Table
 from rich.console import Console
@@ -155,3 +157,30 @@ def write_txt_report_style_1(files: List[str], output_file: str, sensor_type: st
         res.sort(key=lambda x: x[0])
         for _, line in res:
             f.write(line)
+
+def plot_3d_matrix(matrix1: np.ndarray, matrix2: np.ndarray = None, figaspect: float = 0.5) -> None:
+    """
+    Plot the 3D matrix.
+    If matrix2 is provided, plot dots along with a line from matrix1[i] to matrix2[i].
+    Input parameters:
+        - matrix1: np.ndarray - the first matrix.
+        - matrix2: np.ndarray - the second matrix.
+        - figaspect: float - the aspect ratio of the figure.
+    """
+    # Set figure twice as wide as it is tall
+    fig = plt.figure(figsize=plt.figaspect(figaspect))
+    rows, cols = 1, 1
+    if matrix2 is not None:
+        cols = 2
+    # First plot
+    ax = fig.add_subplot(rows, cols, 1, projection='3d')
+    ax.scatter(matrix1[:, 0], matrix1[:, 1], matrix1[:, 2], c='r', marker='o', label='matrix1')
+    if matrix2 is not None:
+        ax.scatter(matrix2[:, 0], matrix2[:, 1], matrix2[:, 2], c='b', marker='+', label='matrix2')
+    ax.legend()
+    if matrix2 is not None:
+        # Second plot
+        ax = fig.add_subplot(rows, cols, 2, projection='3d')
+        for i in range(matrix1.shape[0]):
+            ax.plot([matrix1[i, 0], matrix2[i, 0]], [matrix1[i, 1], matrix2[i, 1]], [matrix1[i, 2], matrix2[i, 2]])
+    plt.show()

@@ -222,11 +222,13 @@ def generate_route(
     carla_client_timeout: Optional[float] = T.Option(
         10.0, help="The connection timeout for the Carla client."),
     map: Optional[str] = T.Option(
-        "Town10HD", help="The map of the Carla environment. Your options are [Town01, Town01_Opt, Town02, Town02_Opt, Town03, Town03_Opt, Town04, Town04_Opt, Town05, Town05_Opt, Town10HD, Town10HD_Opt]."),
+        "Town01", help="The map of the Carla environment. Your options are [Town01, Town01_Opt, Town02, Town02_Opt, Town03, Town03_Opt, Town04, Town04_Opt, Town05, Town05_Opt, Town10HD, Town10HD_Opt]."),
     map_dir: Optional[str] = T.Option(
         "/Game/Carla/Maps", help="The directory where the maps are stored."),
     world_configuration: Optional[str]=T.Option(
-        "./data/config/world0.yaml", help="The configuration file for the Carla world that holds defintion to smaller details.")
+        "./data/config/world0.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
+    figaspect: Optional[float] = T.Option(0.5, help="The aspect ratio of the figure."),
+    verbose: Optional[bool] = T.Option(True, help="Whether to print the logs or not.")
 ) -> None:
     """
     Generate a graph of the given Carla Town map and use it to find a path from the start to the goal.
@@ -249,7 +251,9 @@ def generate_route(
         )
         # Generate the map graph and find a path from the start to the goal.
         high_level_motion_planner = HighLevelMotionPlanner(
-            carla_client_cli=carla_cli
+            carla_client_cli=carla_cli,
+            figaspect=figaspect,
+            verbose=verbose
         )
         high_level_motion_planner.run()
     except Exception as e:
