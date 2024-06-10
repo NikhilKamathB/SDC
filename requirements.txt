@@ -4,6 +4,7 @@ future
 pygame
 numpy
 pydantic
+pandas
 open3d-python
 pytest
 typer

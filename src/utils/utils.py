@@ -8,8 +8,8 @@ import string
 import random
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List
 from rich.table import Table
+from typing import List, Tuple
 from rich.console import Console
 from collections import defaultdict
 from src.model.enum import Gen1VehicleType, Gen2VehicleType, WalkerType
@@ -158,16 +158,17 @@ def write_txt_report_style_1(files: List[str], output_file: str, sensor_type: st
         for _, line in res:
             f.write(line)
 
-def plot_3d_matrix(matrix1: np.ndarray, matrix2: np.ndarray = None, figaspect: float = 0.5) -> None:
+def plot_3d_matrix(matrix1: np.ndarray, matrix2: np.ndarray = None, axis_labels: Tuple[str, str, str] = ['X', 'Y', 'Z'], figaspect: float = 0.5, title: str = "") -> None:
     """
     Plot the 3D matrix.
     If matrix2 is provided, plot dots along with a line from matrix1[i] to matrix2[i].
     Input parameters:
         - matrix1: np.ndarray - the first matrix.
         - matrix2: np.ndarray - the second matrix.
+        - axis_labels: Tuple[str, str, str] - the labels for the first matrix.
         - figaspect: float - the aspect ratio of the figure.
+        - title: str - the title of the plot.
     """
-    # Set figure twice as wide as it is tall
     fig = plt.figure(figsize=plt.figaspect(figaspect))
     rows, cols = 1, 1
     if matrix2 is not None:
@@ -178,9 +179,52 @@ def plot_3d_matrix(matrix1: np.ndarray, matrix2: np.ndarray = None, figaspect: f
     if matrix2 is not None:
         ax.scatter(matrix2[:, 0], matrix2[:, 1], matrix2[:, 2], c='b', marker='+', label='matrix2')
     ax.legend()
+    ax.set_xlabel(axis_labels[0])
+    ax.set_ylabel(axis_labels[1])
+    ax.set_zlabel(axis_labels[2])
     if matrix2 is not None:
         # Second plot
         ax = fig.add_subplot(rows, cols, 2, projection='3d')
         for i in range(matrix1.shape[0]):
             ax.plot([matrix1[i, 0], matrix2[i, 0]], [matrix1[i, 1], matrix2[i, 1]], [matrix1[i, 2], matrix2[i, 2]])
+        ax.set_xlabel(axis_labels[0])
+        ax.set_ylabel(axis_labels[1])
+        ax.set_zlabel(axis_labels[2])
+    fig.suptitle(title)
+    plt.show()
+
+def plot_3d_roads(road1: Tuple[np.ndarray, np.ndarray], road2: Tuple[np.ndarray, np.ndarray] = None, axis_labels: Tuple[str, str, str] = ['X', 'Y', 'Z'], figaspect: float = 0.5, title: str = "") -> None:
+    """
+    Plot the 3D roads.
+    If `road2` params is provided, plot two set of roads for comparison.
+    Input parameters:
+        - road1: Tuple[np.ndarray, np.ndarray] - the first road - [start, end] np arrays.
+        - road2: Tuple[np.ndarray, np.ndarray] - the second road - [start, end] np arrays.
+        - axis_labels: Tuple[str, str, str] - the labels for the first matrix.
+        - figaspect: float - the aspect ratio of the figure.
+        - title: str - the title of the plot.
+    """
+    assert len(road1) == 2, "Road1 must be a tuple of two numpy arrays."
+    if road2 is not None:
+        assert len(road2) == 2, "Road2 must be a tuple of two numpy arrays."
+    fig = plt.figure(figsize=plt.figaspect(figaspect))
+    rows, cols = 1, 1
+    if road2 is not None:
+        cols = 2
+    # First plot
+    ax = fig.add_subplot(rows, cols, 1, projection='3d')
+    for i in range(road1[0].shape[0]):
+        ax.plot([road1[0][i, 0], road1[1][i, 0]], [road1[0][i, 1], road1[1][i, 1]], [road1[0][i, 2], road1[1][i, 2]])
+    ax.set_xlabel(axis_labels[0])
+    ax.set_ylabel(axis_labels[1])
+    ax.set_zlabel(axis_labels[2])
+    if road2 is not None:
+        # Second plot
+        ax = fig.add_subplot(rows, cols, 2, projection='3d')
+        for i in range(road2[0].shape[0]):
+            ax.plot([road2[0][i, 0], road2[1][i, 0]], [road2[0][i, 1], road2[1][i, 1]], [road2[0][i, 2], road2[1][i, 2]])
+        ax.set_xlabel(axis_labels[0])
+        ax.set_ylabel(axis_labels[1])
+        ax.set_zlabel(axis_labels[2])
+    fig.suptitle(title)
     plt.show()

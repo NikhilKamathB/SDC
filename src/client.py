@@ -73,6 +73,7 @@ class CarlaClientCLI:
             self.client.set_timeout(self.carla_client_timeout)
             self.world = self._init_world()
             self.carla_map = self.world.get_map()
+            self.map_topology = self.carla_map.get_topology()
             self.traffic_manager = self._init_traffic_manager() if self.tm_enabled else None
             self.simulation_start_time = self.world.get_snapshot().timestamp.elapsed_seconds
         except Exception as e:

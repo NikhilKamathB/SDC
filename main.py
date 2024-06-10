@@ -222,7 +222,7 @@ def generate_route(
     carla_client_timeout: Optional[float] = T.Option(
         10.0, help="The connection timeout for the Carla client."),
     map: Optional[str] = T.Option(
-        "Town01", help="The map of the Carla environment. Your options are [Town01, Town01_Opt, Town02, Town02_Opt, Town03, Town03_Opt, Town04, Town04_Opt, Town05, Town05_Opt, Town10HD, Town10HD_Opt]."),
+        "Town10HD", help="The map of the Carla environment. Your options are [Town01, Town01_Opt, Town02, Town02_Opt, Town03, Town03_Opt, Town04, Town04_Opt, Town05, Town05_Opt, Town10HD, Town10HD_Opt]."),
     map_dir: Optional[str] = T.Option(
         "/Game/Carla/Maps", help="The directory where the maps are stored."),
     world_configuration: Optional[str]=T.Option(
