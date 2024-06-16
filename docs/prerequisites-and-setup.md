@@ -7,6 +7,8 @@ Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/)
 ## 🧰 Setup
 
 * Install Nvidia Drivers
+* Install `C++` compilers
+* Install `CMake`
 * For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install Nvidia container toolkit.
 
 ```
