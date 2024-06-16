@@ -6,6 +6,26 @@ import carla
 from enum import Enum
 
 
+class DistanceMetric(Enum):
+    
+    """
+    Define the different distance metrics.
+    """
+    EUCLIDEAN = "euclidean"
+    MANHATTAN = "manhattan"
+
+
+class SearchAlgorithm(Enum):
+        
+    """
+    Define the different search algorithms.
+    """
+    BREADTH_FIRST_SEARCH = "bfs"
+    DEPTH_FIRST_SEARCH = "dfs"
+    UNIFORM_COST_SEARCH = "ucs"
+    A_STAR = "astar"
+
+
 class SensorConvertorType(Enum):
 
     """

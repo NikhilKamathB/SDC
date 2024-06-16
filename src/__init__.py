@@ -11,7 +11,7 @@ from .base.walker import Walker, WalkerAI
 from .data_synthesizer import DataSynthesizer
 from .model import validators as PydanticModel
 from .motion_planning import HighLevelMotionPlanner
-from .model.enum import SensorConvertorType, SpectatorAttachmentMode, TMActorSpeedMode
+from .model.enum import DistanceMetric, SearchAlgorithm, SensorConvertorType, SpectatorAttachmentMode, TMActorSpeedMode
 from .utils.logger import __setup_logger__
 from .utils.utils import (
     print_param_table,
@@ -47,6 +47,8 @@ __all__ = [
     "generate_vehicle_config",
     "generate_pedestrian_config",
     "write_txt_report_style_1",
+    "DistanceMetric",
+    "SearchAlgorithm",
     "SpectatorAttachmentMode",
     "SensorConvertorType",
     "TMActorSpeedMode"

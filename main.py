@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 from typing import Optional, List
 from src import print_param_table, read_yaml, write_yaml
 from src import (
-    CarlaClientCLI, DataSynthesizer, HighLevelMotionPlanner, 
+    CarlaClientCLI, DataSynthesizer, HighLevelMotionPlanner,
+    DistanceMetric, SearchAlgorithm,
     SensorConvertorType, SpectatorAttachmentMode, TMActorSpeedMode,
     generate_vehicle_config, generate_pedestrian_config,
     write_txt_report_style_1
@@ -227,6 +228,8 @@ def generate_route(
         "/Game/Carla/Maps", help="The directory where the maps are stored."),
     world_configuration: Optional[str]=T.Option(
         "./data/config/world0.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
+    distance_metric: Optional[str] = T.Option(DistanceMetric.EUCLIDEAN.value, help="The distance metric to be used for the search algorithm. Your options are [euclidean, manhattan]."),
+    search_algorithm: Optional[str] = T.Option(SearchAlgorithm.A_STAR.value, help="The search algorithm to be used for finding the path. Your options are [bfs, dfs, ucs, astar]."),
     delimiter: Optional[str] = T.Option("__", help="The delimiter for the node representation."),
     figaspect: Optional[float] = T.Option(0.5, help="The aspect ratio of the figure."),
     verbose: Optional[bool] = T.Option(True, help="Whether to print the logs or not.")
@@ -253,6 +256,8 @@ def generate_route(
         # Generate the map graph and find a path from the start to the goal.
         high_level_motion_planner = HighLevelMotionPlanner(
             carla_client_cli=carla_cli,
+            distance_metric=distance_metric,
+            search_algorithm=search_algorithm,
             node_name_delimiter=delimiter,
             figaspect=figaspect,
             verbose=verbose
