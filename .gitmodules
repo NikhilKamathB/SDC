@@ -1,0 +1,3 @@
+[submodule "third_party/algorithms"]
+	path = third_party/algorithms
+	url = git@github.com:NikhilKamathB/Algorithms.git

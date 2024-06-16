@@ -33,8 +33,20 @@ class HighLevelMotionPlanner:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the high level motion planner")
         self.carla_client_cli = carla_client_cli
-        self.figaspect = kwargs.get('figaspect', 0.5)
-        self.verbose = kwargs.get('verbose', True)
+        self.node_name_delimiter = kwargs.get("node_name_delimiter", "__")
+        self.figaspect = kwargs.get("figaspect", 0.5)
+        self.verbose = kwargs.get("verbose", True)
+    
+    def _make_node_name(self, road_id: int, section_id: int, lane_sign: int) -> str:
+        """
+        Make the node name.
+        Input parameters:
+            - road_id: int - the road id.
+            - section_id: int - the section id.
+            - lane_sign: int - the lane sign.
+        Return: A string containing the node name.
+        """
+        return f"{road_id}{self.node_name_delimiter}{section_id}{self.node_name_delimiter}{lane_sign}"
 
     def _register_map_data(self) -> pd.DataFrame:
         """
@@ -85,11 +97,12 @@ class HighLevelMotionPlanner:
         )
         return simplifiled_df.reset_index()
 
-    def _init_graph(self, df: pd.DataFrame) -> None:
+    def _init_graph(self, df: pd.DataFrame) -> Tuple[defaultdict, list]:
         """
         Initialize the graph for motion planning.
         Input parameters:
             - df: pd.DataFrame - the dataframe containing the map topology information.
+        Return: A tuple containing the node dictionary and the edges.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the graph for motion planning")
         df_simplified = self._get_simplified_map_data(df)
@@ -97,6 +110,8 @@ class HighLevelMotionPlanner:
         w_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
         simplified_start_segment = np.ndarray((0, 3)) # x, y, z - R3 space
         simplified_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
+        node_dict = defaultdict(list)
+        node_edges = []
         for segment in self.carla_client_cli.map_topology:
             w1, w2 = segment
             w_start_segment = np.vstack((w_start_segment, np.array([w1.transform.location.x, w1.transform.location.y, w1.transform.location.z])))
@@ -107,10 +122,18 @@ class HighLevelMotionPlanner:
             end_segment_df = df_simplified[(df_simplified["road_id"] == end_road_id) & (df_simplified["section_id"] == end_section_id) & (df_simplified["lane_sign"] == end_lane_sign)]
             simplified_start_segment = np.vstack((simplified_start_segment, np.array([start_segment_df.x, start_segment_df.y, start_segment_df.z]).T))
             simplified_end_segment = np.vstack((simplified_end_segment, np.array([end_segment_df.x, end_segment_df.y, end_segment_df.z]).T))
+            node_repr_start = self._make_node_name(start_road_id, start_section_id, start_lane_sign)
+            node_repr_end = self._make_node_name(end_road_id, end_section_id, end_lane_sign)
+            if node_repr_start not in node_dict:
+                node_dict[node_repr_start] = [start_segment_df.x, start_segment_df.y, start_segment_df.z]
+            if node_repr_end not in node_dict:
+                node_dict[node_repr_end] = [end_segment_df.x, end_segment_df.y, end_segment_df.z]
+            node_edges.append((node_repr_start, node_repr_end))
         if self.verbose:
             plot_3d_matrix(w_start_segment, w_end_segment, figaspect=self.figaspect, title="Map Topology")
             plot_3d_matrix(simplified_start_segment, simplified_end_segment, figaspect=self.figaspect, title="Simplified Map Topology")
             plot_3d_roads(road1=(w_start_segment, w_end_segment), road2=(simplified_start_segment, simplified_end_segment), figaspect=self.figaspect, title="Roads")
+        return (node_dict, node_edges)
             
     def _create_graph(self) -> None:
         """
@@ -118,7 +141,7 @@ class HighLevelMotionPlanner:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Creating the graph for the given map to solve high level motion planning")
         df_map = self._register_map_data()
-        self._init_graph(df_map)
+        node_dict, node_edges = self._init_graph(df_map)
 
     def _plan_route(self) -> None:
         """
