@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from typing import Tuple, Type, List
+from typing import Tuple, Type, List, Union
 from src.client import CarlaClientCLI
 from src.utils.utils import plot_3d_matrix, plot_3d_roads
 from src.model.enum import DistanceMetric, SearchAlgorithm
@@ -133,12 +133,34 @@ class HighLevelMotionPlanner:
         )
         return simplifiled_df.reset_index()
 
-    def _init_graph(self, df: pd.DataFrame) -> Tuple[defaultdict, list]:
+    def _get_segments_and_representations(self, df: pd.DataFrame, w1: Union[carla.Waypoint, Type[algorithms.NodeD3]], w2: Union[carla.Waypoint, Type[algorithms.NodeD3]]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Get the segments and representations from the dataframe.
+        Input parameters:
+            - df: pd.DataFrame - the dataframe containing the map topology information.
+            - w1: carla.Waypoint or algorithms.NodeD3 - the first waypoint.
+            - w2: carla.Waypoint or algorithms.NodeD3 - the second waypoint.
+        Return: A tuple containing the start, end segments and thier representations.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the segments from the dataframe")
+        if isinstance(w1, carla.Waypoint) and isinstance(w2, carla.Waypoint):
+            start_road_id, start_section_id, start_lane_sign = w1.road_id, w1.section_id, int(w1.lane_id > 0)
+            end_road_id, end_section_id, end_lane_sign = w2.road_id, w2.section_id, int(w2.lane_id > 0)
+        elif isinstance(w1, algorithms.NodeD3) and isinstance(w2, algorithms.NodeD3):
+            start_road_id, start_section_id, start_lane_sign = map(int, w1.getName().split(self.node_name_delimiter))
+            end_road_id, end_section_id, end_lane_sign = map(int, w2.getName().split(self.node_name_delimiter))
+        else:
+            raise ValueError(f"Invalid waypoint types: {type(w1)}, {type(w2)}")
+        start_segment_df = df[(df["road_id"] == start_road_id) & (df["section_id"] == start_section_id) & (df["lane_sign"] == start_lane_sign)]
+        end_segment_df = df[(df["road_id"] == end_road_id) & (df["section_id"] == end_section_id) & (df["lane_sign"] == end_lane_sign)]
+        return (start_segment_df, end_segment_df, self._make_node_name(start_road_id, start_section_id, start_lane_sign), self._make_node_name(end_road_id, end_section_id, end_lane_sign))
+
+    def _init_graph(self, df: pd.DataFrame) -> Tuple[defaultdict, list, pd.DataFrame]:
         """
         Initialize the graph for motion planning.
         Input parameters:
             - df: pd.DataFrame - the dataframe containing the map topology information.
-        Return: A tuple containing the node dictionary and the edges.
+        Return: A tuple containing the node dictionary, edges and the simplified dataframe.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the graph for motion planning")
         df_simplified = self._get_simplified_map_data(df)
@@ -147,20 +169,15 @@ class HighLevelMotionPlanner:
         simplified_start_segment = np.ndarray((0, 3)) # x, y, z - R3 space
         simplified_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
         node_dict = defaultdict(list)
-        node_edges = []
+        node_edges = set()
         for segment in self.carla_client_cli.map_topology:
             w1, w2 = segment
-            start_road_id, start_section_id, start_lane_sign = w1.road_id, w1.section_id, int(w1.lane_id > 0)
-            end_road_id, end_section_id, end_lane_sign = w2.road_id, w2.section_id, int(w2.lane_id > 0)
-            start_segment_df = df_simplified[(df_simplified["road_id"] == start_road_id) & (df_simplified["section_id"] == start_section_id) & (df_simplified["lane_sign"] == start_lane_sign)]
-            end_segment_df = df_simplified[(df_simplified["road_id"] == end_road_id) & (df_simplified["section_id"] == end_section_id) & (df_simplified["lane_sign"] == end_lane_sign)]
-            node_repr_start = self._make_node_name(start_road_id, start_section_id, start_lane_sign)
-            node_repr_end = self._make_node_name(end_road_id, end_section_id, end_lane_sign)
+            start_segment_df, end_segment_df, node_repr_start, node_repr_end = self._get_segments_and_representations(df_simplified, w1, w2)
             if node_repr_start not in node_dict:
                 node_dict[node_repr_start] = np.array([start_segment_df.x, start_segment_df.y, start_segment_df.z]).T
             if node_repr_end not in node_dict:
                 node_dict[node_repr_end] = np.array([end_segment_df.x, end_segment_df.y, end_segment_df.z]).T
-            node_edges.append((node_repr_start, node_repr_end))
+            node_edges.add((node_repr_start, node_repr_end))
             if self.verbose:
                 w_start_segment = np.vstack((w_start_segment, np.array([w1.transform.location.x, w1.transform.location.y, w1.transform.location.z])))
                 w_end_segment = np.vstack((w_end_segment, np.array([w2.transform.location.x, w2.transform.location.y, w2.transform.location.z])))
@@ -170,16 +187,17 @@ class HighLevelMotionPlanner:
             plot_3d_matrix(w_start_segment, w_end_segment, figaspect=self.figaspect, title="Map Topology")
             plot_3d_matrix(simplified_start_segment, simplified_end_segment, figaspect=self.figaspect, title="Simplified Map Topology")
             plot_3d_roads(road1=(w_start_segment, w_end_segment), road2=(simplified_start_segment, simplified_end_segment), figaspect=self.figaspect, title="Roads")
-        return (node_dict, node_edges)
+        node_edges = list(node_edges)
+        return (node_dict, node_edges ,df_simplified)
         
-    def _create_graph(self) -> Tuple[dict, dict, dict]:
+    def _create_graph(self) -> Tuple[dict, dict, dict, pd.DataFrame]:
         """
         Create the graph for motion planning.
-        Return: A dictionary containing the graph, the node to index mapping and the index to node mapping.
+        Return: A dictionary containing the graph, the node to index mapping, the index to node mapping and the simplified dataframe.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Creating the graph for the given map to solve high level motion planning")
         df_map = self._register_map_data()
-        node_dict, node_edges = self._init_graph(df_map)
+        node_dict, node_edges, df_simplified = self._init_graph(df_map)
         node_to_idx = {node: idx for idx, node in enumerate(node_dict.keys())}
         idx_to_node = {v: k for k, v in node_to_idx.items()}
         num_nodes = len(node_dict)
@@ -193,9 +211,9 @@ class HighLevelMotionPlanner:
             "node_values": node_values,
             "node_names": node_names,
             "edges": edges
-        }, node_to_idx, idx_to_node)
+        }, node_to_idx, idx_to_node, df_simplified)
 
-    def _plan_route(self, start_node_idx: int = 0, goal_node_idx: int = -1, auto: bool = False) -> List[carla.Waypoint]:
+    def _plan_route(self, start_node_idx: int = 0, goal_node_idx: int = -1, auto: bool = False) -> Tuple[List[Tuple[Type[algorithms.NodeD3], float]], dict, dict, pd.DataFrame]:
         """
         Plan the route for the given graph.
         Input parameters:
@@ -205,7 +223,7 @@ class HighLevelMotionPlanner:
         Return: A list of carla waypoints.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Planning the route for the given graph")
-        graph, node_to_idx, idx_to_node = self._create_graph()
+        graph, node_to_idx, idx_to_node, df_simplified = self._create_graph()
         # Dealing with 3-Dimensional double precision items
         algd3 = algorithms.AlgorithmD3()
         path = algd3.search(
@@ -217,6 +235,7 @@ class HighLevelMotionPlanner:
             node_prefix_name="",
             bidirectional=False
         )
+        return (path, node_to_idx, idx_to_node, df_simplified)
 
     def run(self, start_node_idx: int = 0, goal_node_idx: int = -1, auto: bool = False) -> None:
         """
@@ -227,6 +246,23 @@ class HighLevelMotionPlanner:
             - auto: bool - whether to run the motion planner automatically.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Running the high level motion planner")
-        self._plan_route()
+        path, _, _, df_simplified = self._plan_route(start_node_idx=start_node_idx, goal_node_idx=goal_node_idx, auto=auto)
+        w_start_segment = np.ndarray((0, 3)) # x, y, z - R3 space
+        w_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
+        for idx in range(len(path) - 1):
+            start_waypoint_node, _ = path[idx]
+            end_waypoint_node, _ = path[idx + 1]
+            start_segment_df, end_segment_df, _, _ = self._get_segments_and_representations(df_simplified, start_waypoint_node, end_waypoint_node)
+            w_start_segment = np.vstack((w_start_segment, np.array([start_segment_df.x, start_segment_df.y, start_segment_df.z]).T))
+            w_end_segment = np.vstack((w_end_segment, np.array([end_segment_df.x, end_segment_df.y, end_segment_df.z]).T))
+        if self.verbose:
+            w_ref_start_segment = np.ndarray((0, 3))
+            w_ref_end_segment = np.ndarray((0, 3))
+            for segment in self.carla_client_cli.map_topology:
+                w1, w2 = segment
+                start_segment_df, end_segment_df, _, _ = self._get_segments_and_representations(df_simplified, w1, w2)
+                w_ref_start_segment = np.vstack((w_ref_start_segment, np.array([start_segment_df.x, start_segment_df.y, start_segment_df.z]).T))
+                w_ref_end_segment = np.vstack((w_ref_end_segment, np.array([end_segment_df.x, end_segment_df.y, end_segment_df.z]).T))
+            plot_3d_roads(road1=(w_ref_start_segment, w_ref_end_segment), road2=(w_start_segment, w_end_segment), figaspect=self.figaspect, title="Road After High Level Motion Planning")
         logger.info(f"{self.__LOG_PREFIX__}: High level motion planning completed")
         self.carla_client_cli.clear_environment()
