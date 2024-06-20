@@ -230,6 +230,8 @@ def generate_route(
         "./data/config/world0.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
     distance_metric: Optional[str] = T.Option(DistanceMetric.EUCLIDEAN.value, help="The distance metric to be used for the search algorithm. Your options are [euclidean, manhattan]."),
     search_algorithm: Optional[str] = T.Option(SearchAlgorithm.A_STAR.value, help="The search algorithm to be used for finding the path. Your options are [bfs, dfs, ucs, astar]."),
+    set_start_state: Optional[bool] = T.Option(True, help="Whether to manually set start state or not."),
+    set_goal_state: Optional[bool] = T.Option(True, help="Whether to manually set goal state or not."),
     delimiter: Optional[str] = T.Option("__", help="The delimiter for the node representation."),
     figaspect: Optional[float] = T.Option(0.5, help="The aspect ratio of the figure."),
     verbose: Optional[bool] = T.Option(True, help="Whether to print the logs or not.")
@@ -258,6 +260,8 @@ def generate_route(
             carla_client_cli=carla_cli,
             distance_metric=distance_metric,
             search_algorithm=search_algorithm,
+            set_start_state=set_start_state,
+            set_goal_state=set_goal_state,
             node_name_delimiter=delimiter,
             figaspect=figaspect,
             verbose=verbose

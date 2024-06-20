@@ -100,6 +100,7 @@ class DataSynthesizer:
         """
         Run the data synthesizer.
         """
+        logger.info(f"{self.__LOG_PREFIX__}: Running the data synthesizer")
         try:
             self._pre_commit()
             while self.carla_client_cli.max_simulation_time > \

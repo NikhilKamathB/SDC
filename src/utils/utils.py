@@ -8,10 +8,12 @@ import string
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from rich.table import Table
-from typing import List, Tuple
 from rich.console import Console
 from collections import defaultdict
+from typing import List, Tuple, Union
+from matplotlib.widgets import TextBox
 from src.model.enum import Gen1VehicleType, Gen2VehicleType, WalkerType
 
 
@@ -158,40 +160,115 @@ def write_txt_report_style_1(files: List[str], output_file: str, sensor_type: st
         for _, line in res:
             f.write(line)
 
-def plot_3d_matrix(matrix1: np.ndarray, matrix2: np.ndarray = None, axis_labels: Tuple[str, str, str] = ['X', 'Y', 'Z'], figaspect: float = 0.5, title: str = "") -> None:
+def plot_3d_matrix(
+        matrix1: np.ndarray, 
+        matrix2: np.ndarray = None, 
+        matrix1_annotations: Tuple[np.ndarray, list] = None, 
+        matrix2_annotations: Tuple[np.ndarray, list] = None, 
+        matrix1_annotations_offset: float = 0.5, 
+        matrix2_annotations_offset: float = -0.5, 
+        matrix1_color: str = 'r', 
+        matrix2_color: str = 'b', 
+        axis_labels: Tuple[str, str, str] = ['X', 'Y', 'Z'], 
+        figaspect: float = 0.5, 
+        title: str = "", 
+        plot_secondary_graph: bool = True,
+        need_user_input: bool = False,
+        input_text_attrs: List[Tuple[str, Union[int, str]]] = None,
+        input_text_align: str = "center",
+        submit_button_display_text: str = "Submit",
+        default_height_ratio: float = 1,
+        misc_height_ratio: float = 0.075) -> Union[None, List[str]]:
     """
     Plot the 3D matrix.
     If matrix2 is provided, plot dots along with a line from matrix1[i] to matrix2[i].
+    You can optionally take input from the user using `TextBox`.
+    The first row is reserved for the plot, the rest of the rows are for the input text fields and the submit button if enabled.
     Input parameters:
         - matrix1: np.ndarray - the first matrix.
         - matrix2: np.ndarray - the second matrix.
+        - matrix1_annotations: Tuple[np.ndarray, list] - the annotations for the first matrix.
+        - matrix2_annotations: Tuple[np.ndarray, list] - the annotations for the second matrix.
+        - matrix1_annotations_offset: float - the offset for the annotations of the first matrix.
+        - matrix2_annotations_offset: float - the offset for the annotations of the second matrix.
+        - matrix1_color: str - the color of the first matrix.
+        - matrix2_color: str - the color of the second matrix.
         - axis_labels: Tuple[str, str, str] - the labels for the first matrix.
         - figaspect: float - the aspect ratio of the figure.
         - title: str - the title of the plot.
+        - plot_secondary_graph: bool - whether to plot the secondary graph or not.
+        - need_user_input: bool - whether to ask for user input or not.
+        - input_text_attrs: List[Tuple[str, Union[int, str]]] - the attributes for the input text, for example:
+            [
+                (<text-field1-name>, <str>),
+                (<text-field2-name>, <int>),
+                ...
+            ]
+        - input_text_align: str - the alignment of the input text.
+        - submit_button_display_text: str - the text to be displayed on the submit button.
+        - misc_height_ratio: float - the height ratio for the misc items - text fields and buttons.
+    Return: List[str] - the values of the input text fields and None if no input text fields are not rendered.
     """
+
+    def submit(event) -> None:
+        """
+        Action taken on clicking the submit button.
+        """
+        nonlocal response
+        response = [tbox.text for tbox in input_text_boxes]
+        plt.close()
+
     fig = plt.figure(figsize=plt.figaspect(figaspect))
+    response = None
     rows, cols = 1, 1
+    misc_rows = 0
+    input_text_boxes = []
     if matrix2 is not None:
         cols = 2
+    if need_user_input:
+        misc_rows = len(input_text_attrs) + 1 # Add one for the submit button
+        rows += misc_rows
+    gs = gridspec.GridSpec(rows, cols, height_ratios=[default_height_ratio] + [misc_height_ratio] * misc_rows)
     # First plot
-    ax = fig.add_subplot(rows, cols, 1, projection='3d')
-    ax.scatter(matrix1[:, 0], matrix1[:, 1], matrix1[:, 2], c='r', marker='o', label='matrix1')
+    # Plot actual information
+    ax = fig.add_subplot(gs[0, 0], projection='3d')
+    ax.scatter(matrix1[:, 0], matrix1[:, 1], matrix1[:, 2], c=matrix1_color, marker='o', label='matrix1')
     if matrix2 is not None:
-        ax.scatter(matrix2[:, 0], matrix2[:, 1], matrix2[:, 2], c='b', marker='+', label='matrix2')
+        ax.scatter(matrix2[:, 0], matrix2[:, 1], matrix2[:, 2], c=matrix2_color, marker='+', label='matrix2')
+    # Plot annotations
+    if matrix1_annotations is not None:
+        itr_matrix1_range = min(matrix1_annotations[0].shape[0], len(matrix1_annotations[1]))
+        for i in range(itr_matrix1_range):
+            ax.text(matrix1_annotations[0][i, 0], matrix1_annotations[0][i, 1], matrix1_annotations[0][i, 2] + matrix1_annotations_offset, c=matrix1_color, s=matrix1_annotations[1][i])
+    if matrix2 is not None and matrix2_annotations is not None:
+        itr_matrix2_range = min(matrix2_annotations[0].shape[0], len(matrix2_annotations[1]))
+        for i in range(itr_matrix2_range):
+            ax.text(matrix2_annotations[0][i, 0], matrix2_annotations[0][i, 1], matrix2_annotations[0][i, 2] + matrix2_annotations_offset, c=matrix2_color, s=matrix2_annotations[1][i])
     ax.legend()
     ax.set_xlabel(axis_labels[0])
     ax.set_ylabel(axis_labels[1])
     ax.set_zlabel(axis_labels[2])
-    if matrix2 is not None:
-        # Second plot
-        ax = fig.add_subplot(rows, cols, 2, projection='3d')
+    # Second plot
+    if matrix2 is not None and plot_secondary_graph:
+        ax = fig.add_subplot(gs[0, 1], projection='3d')
         for i in range(matrix1.shape[0]):
             ax.plot([matrix1[i, 0], matrix2[i, 0]], [matrix1[i, 1], matrix2[i, 1]], [matrix1[i, 2], matrix2[i, 2]])
         ax.set_xlabel(axis_labels[0])
         ax.set_ylabel(axis_labels[1])
         ax.set_zlabel(axis_labels[2])
+    # User input
+    if need_user_input and input_text_attrs is not None:
+        for idx, tbox in enumerate(input_text_attrs):
+            tbox_name, tbox_default_value = tbox
+            axbox = fig.add_subplot(gs[1+idx, :])
+            text_box = TextBox(axbox, tbox_name, initial=str(tbox_default_value), textalignment=input_text_align)
+            input_text_boxes.append(text_box)
+        axsubmit = fig.add_subplot(gs[1+len(input_text_attrs), :])
+        button = plt.Button(axsubmit, submit_button_display_text)
+        button.on_clicked(submit)
     fig.suptitle(title)
     plt.show()
+    return response
 
 def plot_3d_roads(road1: Tuple[np.ndarray, np.ndarray], road2: Tuple[np.ndarray, np.ndarray] = None, axis_labels: Tuple[str, str, str] = ['X', 'Y', 'Z'], figaspect: float = 0.5, title: str = "") -> None:
     """
