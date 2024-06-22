@@ -1,3 +1,17 @@
+---
+layout:
+  title:
+    visible: true
+  description:
+    visible: false
+  tableOfContents:
+    visible: true
+  outline:
+    visible: true
+  pagination:
+    visible: true
+---
+
 # 📔 Notes
 
 * As much as possible, try to stick to this template. Any improvement/suggestion to this organization is always welcome.

@@ -1,3 +1,17 @@
+---
+layout:
+  title:
+    visible: true
+  description:
+    visible: false
+  tableOfContents:
+    visible: true
+  outline:
+    visible: true
+  pagination:
+    visible: true
+---
+
 # ⚒️ Prerequisites and Setup
 
 ## 🔧 Prerequisites
@@ -6,10 +20,11 @@ Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/)
 
 ## 🧰 Setup
 
+* Have accounts setup in GitHub and GitLab to access all modules required.
 * Install Nvidia Drivers
 * Install `C++` compiler
 * Install `CMake`
-* For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install Nvidia container toolkit.
+* For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
 ```
 docker pull carlasim/carla:<tag>      # eg: carlasim/carla:0.9.15 
@@ -32,13 +47,17 @@ pip install -r requirements.txt
 pip install -r requirements-simpan.txt    # [Optional] - use this with SimPan
 ```
 
-* If you running the container with rendering enabled - remember to revert the permissions you set with xhost for security reasons once you're done - `xhost -local:docker`.
-* Note that if you want to run the python client (getting pygame window up in Mac) from your Mac, then you have to setup X11 Forwarding. Do the follwing for setting this up:
-  * Download and install XQuartz from [here](https://www.xquartz.org/).
-  * After installation, log out and log back in to ensure XQuartz starts properly.
-  * Upon opening the XQuartz terimal, run `ssh -Y username@remote-server` for secure connection. You may then simply run your script.
-  * The downside is that the visualization and communication will have a noticable latency.
-* Another note - if you are using conda environment remember to run `conda install -c conda-forge libstdcxx-ng` wiith your environment active (to solve MESA-LOADER error).&#x20;
+* Install and build all dependencies required by running `./setup.sh`. This will build all the other dependencies needed.
+  * Git submodules used:
+    * [Algorithms](https://github.com/NikhilKamathB/Algorithms)
+* Miscelleneous
+  * If you running the container with rendering enabled - remember to revert the permissions you set with xhost for security reasons once you're done - `xhost -local:docker`.
+  * Note that if you want to run the python client (getting pygame window up in Mac) from your Mac, then you have to setup X11 Forwarding. Do the follwing for setting this up:
+    * Download and install XQuartz from [here](https://www.xquartz.org/).
+      * After installation, log out and log back in to ensure XQuartz starts properly.
+      * Upon opening the XQuartz terimal, run `ssh -Y username@remote-server` for secure connection. You may then simply run your script.
+      * The downside is that the visualization and communication will have a noticable latency.
+  * Another note - if you are using conda environment remember to run `conda install -c conda-forge libstdcxx-ng` wiith your environment active (to solve MESA-LOADER error).&#x20;
 
 ## 🤫 Environment Variables
 
@@ -65,6 +84,7 @@ SDC Repo.
     |- uitls (untilities are defined here)
     |- client.py (establistes the Carla client and acts as a gateway between our custom scripts and the Carla server)
     |- data_synthesizer.py (script for generating and storing any kind of data from any actor's point of view)
+    |- motion_planning.py (script for motionl planning for our ego vehicle)
 |- test (all test cases are defined here)
 |- main.py (contains the driver code)
 |- requirements.txt (holds dependencies)
