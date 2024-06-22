@@ -178,7 +178,9 @@ def plot_3d_matrix(
         input_text_align: str = "center",
         submit_button_display_text: str = "Submit",
         default_height_ratio: float = 1,
-        misc_height_ratio: float = 0.075) -> Union[None, List[str]]:
+        misc_height_ratio: float = 0.075,
+        default_response: List[int] = [0, -1]
+        ) -> Union[None, List[str]]:
     """
     Plot the 3D matrix.
     If matrix2 is provided, plot dots along with a line from matrix1[i] to matrix2[i].
@@ -207,6 +209,7 @@ def plot_3d_matrix(
         - input_text_align: str - the alignment of the input text.
         - submit_button_display_text: str - the text to be displayed on the submit button.
         - misc_height_ratio: float - the height ratio for the misc items - text fields and buttons.
+        - default_response: List[int] - the default response if no input text fields are rendered.
     Return: List[str] - the values of the input text fields and None if no input text fields are not rendered.
     """
 
@@ -219,10 +222,10 @@ def plot_3d_matrix(
         plt.close()
 
     fig = plt.figure(figsize=plt.figaspect(figaspect))
-    response = None
-    rows, cols = 1, 1
     misc_rows = 0
+    rows, cols = 1, 1
     input_text_boxes = []
+    response = default_response
     if matrix2 is not None:
         cols = 2
     if need_user_input:

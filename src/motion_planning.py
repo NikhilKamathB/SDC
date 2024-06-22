@@ -2,8 +2,8 @@
 # Script for performing motion planning (high and low level) must be written here.
 ################################################################################################################
 
-
 import carla
+import random
 import logging
 import numpy as np
 import pandas as pd
@@ -158,37 +158,48 @@ class HighLevelMotionPlanner:
         end_segment_df = df[(df["road_id"] == end_road_id) & (df["section_id"] == end_section_id) & (df["lane_sign"] == end_lane_sign)]
         return (start_segment_df, end_segment_df, self._make_node_name(start_road_id, start_section_id, start_lane_sign), self._make_node_name(end_road_id, end_section_id, end_lane_sign))
 
-    def _set_start_and_goal_state(self, start_segments: np.ndarray, end_segments: np.ndarray) -> Tuple[int, int]:
+    def _set_start_and_goal_state(self, start_segments: np.ndarray, end_segments: np.ndarray, total_waypoints: int) -> Tuple[int, int]:
         """
         Set the start and goal state for the motion planner.
         Input parameters:
             - start_segments: np.ndarray - the start segments of the edges.
             - end_segments: np.ndarray - the end segments of the edges.
+            - total_waypoints: int - the total number of waypoints.
         Return: A tuple containing the start and goal node index.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting the start and goal state for the motion planner")
         if not self.set_start_state and not self.set_goal_state:
             return (self.default_start_node_idx, self.default_goal_node_idx)
         input_text_attrs = []
+        start_node_idx, goal_node_idx = None, None
         if not self.set_start_state:
-            # TODO: detect current ego position and set the start node index
-            pass
+            start_node_idx = random.randint(0, total_waypoints - 1)
         else:
-            input_text_attrs.append(("Start Node Index", 0))
+            input_text_attrs.append(("Start Node Index", self.default_start_node_idx))
         if not self.set_goal_state:
-            pass
+            goal_node_idx = random.choice([idx for idx in range(total_waypoints) if idx != start_node_idx])
         else:
-            input_text_attrs.append(("Goal Node Index", -1))
-        response = plot_3d_matrix(start_segments, end_segments, figaspect=self.figaspect, title="Start and Goal State Setter", need_user_input=True, input_text_attrs=input_text_attrs)
-        print(response)
-        return (self.default_start_node_idx, self.default_goal_node_idx)
+            input_text_attrs.append(("Goal Node Index", self.default_goal_node_idx))
+        if input_text_attrs:
+            response = plot_3d_matrix(start_segments, end_segments, figaspect=self.figaspect, title="Start and Goal State Setter", need_user_input=True, input_text_attrs=input_text_attrs, default_response=[self.default_start_node_idx, self.default_goal_node_idx])
+            if start_node_idx is None and goal_node_idx is None:
+                start_node_idx, goal_node_idx = response
+            elif start_node_idx is None:
+                start_node_idx = response[0]
+            elif goal_node_idx is None:
+                goal_node_idx = response[0]
+            try:
+                start_node_idx, goal_node_idx = int(start_node_idx), int(goal_node_idx)
+            except ValueError:
+                start_node_idx, goal_node_idx = self.default_start_node_idx, self.default_goal_node_idx
+        return (start_node_idx, goal_node_idx)
     
     def _init_graph(self, df: pd.DataFrame) -> Tuple[defaultdict, list, pd.DataFrame]:
         """
         Initialize the graph for motion planning.
         Input parameters:
             - df: pd.DataFrame - the dataframe containing the map topology information.
-        Return: A tuple containing the node dictionary, edges and the simplified dataframe.
+        Return: A tuple containing the node dictionary, edges starting and ending node indices, and the simplified dataframe.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the graph for motion planning")
         df_simplified = self._get_simplified_map_data(df)
@@ -215,9 +226,9 @@ class HighLevelMotionPlanner:
             _ = plot_3d_matrix(w_start_segment, w_end_segment, figaspect=self.figaspect, title="Map Topology")
             _ = plot_3d_matrix(simplified_start_segment, simplified_end_segment, figaspect=self.figaspect, title="Simplified Map Topology")
             plot_3d_roads(road1=(w_start_segment, w_end_segment), road2=(simplified_start_segment, simplified_end_segment), figaspect=self.figaspect, title="Roads")
-        start_node_idx, goal_node_idx = self._set_start_and_goal_state(simplified_start_segment, simplified_end_segment, )
+        start_node_idx, goal_node_idx = self._set_start_and_goal_state(simplified_start_segment, simplified_end_segment, len(node_dict))
         node_edges = list(node_edges)
-        return (node_dict, node_edges ,df_simplified)
+        return (node_dict, node_edges, start_node_idx, goal_node_idx, df_simplified)
         
     def _create_graph(self) -> Tuple[dict, dict, dict, pd.DataFrame]:
         """
@@ -226,7 +237,7 @@ class HighLevelMotionPlanner:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Creating the graph for the given map to solve high level motion planning")
         df_map = self._register_map_data()
-        node_dict, node_edges, df_simplified = self._init_graph(df_map)
+        node_dict, node_edges, start_node_idx, goal_node_idx, df_simplified = self._init_graph(df_map)
         node_to_idx = {node: idx for idx, node in enumerate(node_dict.keys())}
         idx_to_node = {v: k for k, v in node_to_idx.items()}
         num_nodes = len(node_dict)
@@ -239,7 +250,9 @@ class HighLevelMotionPlanner:
             "num_nodes": num_nodes,
             "node_values": node_values,
             "node_names": node_names,
-            "edges": edges
+            "edges": edges,
+            "start_node_idx": list(idx_to_node.keys())[start_node_idx],
+            "goal_node_idx": list(idx_to_node.keys())[goal_node_idx],
         }, node_to_idx, idx_to_node, df_simplified)
 
     def _plan_route(self) -> Tuple[List[Tuple[Type[algorithms.NodeD3], float]], dict, dict, pd.DataFrame]:
@@ -253,8 +266,6 @@ class HighLevelMotionPlanner:
         algd3 = algorithms.AlgorithmD3()
         path = algd3.search(
             **graph,
-            start_node_idx=list(idx_to_node.keys())[self.default_start_node_idx],
-            goal_node_idx=list(idx_to_node.keys())[self.default_goal_node_idx],
             method=self._get_search_algorithm(),
             distance_metric=self._get_distance_metric(),
             node_prefix_name="",
