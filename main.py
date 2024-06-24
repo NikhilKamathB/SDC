@@ -51,18 +51,20 @@ def generate_synthetic_data(
         42, help="The seed for the traffic manager."),
     tm_speed: Optional[float] = T.Option(
         TMActorSpeedMode.DEFAULT.value, help="The speed for actors controlled by the traffic manager."),
+    tm_enable_autopilot_for_all_vehicles: Optional[bool] = T.Option(
+        False, help="Whether to enable autopilot for all the vehicles - including ego vehicles - or not."),
     rfps: Optional[int] = T.Option(
         None, help="Record frame for every `k` steps - if provided, it will override the `rfps` in the sensor configuration."),
     spectator_enabled: Optional[bool] = T.Option(
         True, help="Whether to enable the spectator for custom spawning or not."),
     spectator_attachment_mode: Optional[str] = T.Option(
-        SpectatorAttachmentMode.VEHICLE.value, help="The mode of attachment for the spectator [d - default, v - vehicle, p - pedestrian]."),
+        SpectatorAttachmentMode.EGO_VEHICLE.value, help="The mode of attachment for the spectator [d - default, e - ego vehicle, p - pedestrian, v - vehicle]."),
     spectator_location_offset: Optional[List[float]] = T.Option(
         [-7.0, 0.0, 5.0], help="The location offset for the spectator in [x, y, z] format. This is only applicable when the spectator is attached to the vehicle."),
     spectator_rotation: Optional[List[float]] = T.Option(
         [-15.0, 0.0, 0.0], help="The rotation offset for the spectator in [pitch, yaw, roll] format. This is only applicable when the spectator is attached to the vehicle."),
     max_simulation_time: Optional[int] = T.Option(
-        100000, help="The maximum time for which the simulation will run."),
+        100, help="The maximum time for which the simulation will run."),
     max_vechiles: Optional[int] = T.Option(
         50, help="The maximum number of vehicles (other than ego) in the Carla environment."),
     vechile_config_dir: Optional[str] = T.Option(
@@ -119,6 +121,7 @@ def generate_synthetic_data(
         # Instantiate the data synthesizer and run the simulation.
         data_synthesizer = DataSynthesizer(
             carla_client_cli=carla_cli,
+            tm_enable_autopilot_for_all_vehicles=tm_enable_autopilot_for_all_vehicles,
             rfps=rfps,
             output_directory=output_directory
         )

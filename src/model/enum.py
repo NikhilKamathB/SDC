@@ -45,8 +45,9 @@ class SpectatorAttachmentMode(Enum):
     """
     
     DEFAULT = "d"
-    VEHICLE = "v"
+    EGO_VEHICLE = "e"
     PEDESTRIAN = "p"
+    VEHICLE = "v"
 
 
 class TMActorSpeedMode(Enum):

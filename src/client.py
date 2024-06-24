@@ -48,7 +48,7 @@ class CarlaClientCLI:
         self.tm_speed = kwargs.get("tm_speed", enum.TMActorSpeedMode.DEFAULT.value)
         self.spectator_enabled= kwargs.get("spectator_enabled", True)
         self.spectator_attachment_mode = kwargs.get(
-            "spectator_attachment_mode", enum.SpectatorAttachmentMode.VEHICLE.value)
+            "spectator_attachment_mode", enum.SpectatorAttachmentMode.EGO_VEHICLE.value)
         self.spectator_location_offset = kwargs.get(
             "spectator_location_offset", [10.0, 0.0, 10.0])
         self.spectator_rotation = kwargs.get(
@@ -165,7 +165,7 @@ class CarlaClientCLI:
             logger.info(
                 f"{self.__LOG_PREFIX__}: Vehicle spawned with details: {vehicle}")
             if vehicle is not None:
-                if vehicle.is_ego:
+                if vehicle.is_ego():
                     self.ego_vehicles.append(vehicle)
                 else:
                     self.vehicles.append(vehicle)
@@ -310,8 +310,10 @@ class CarlaClientCLI:
         try:
             self.specator = self.world.get_spectator()
             if self.spectator_enabled and self.spectator_attachment_mode != enum.SpectatorAttachmentMode.DEFAULT.value:
-                if self.spectator_attachment_mode == enum.SpectatorAttachmentMode.VEHICLE.value:
+                if self.spectator_attachment_mode == enum.SpectatorAttachmentMode.EGO_VEHICLE.value:
                     _actor = random.choice(self.ego_vehicles)
+                elif self.spectator_attachment_mode == enum.SpectatorAttachmentMode.VEHICLE.value:
+                    _actor = random.choice(self.vehicles)
                 elif self.spectator_attachment_mode == enum.SpectatorAttachmentMode.PEDESTRIAN.value:
                     _actor = random.choice(self.walkers)[0] # Get the walker and not the controller
                 else:

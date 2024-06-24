@@ -28,6 +28,7 @@ class DataSynthesizer:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the data synthesizer")
         self.carla_client_cli = carla_client_cli
+        self.tm_enable_autopilot_for_all_vehicles = kwargs.get("tm_enable_autopilot_for_all_vehicles", False)
         self.rfps = kwargs.get("rfps", 15)
         self.output_directory = kwargs.get("output_directory", "./data/raw")
     
@@ -39,7 +40,8 @@ class DataSynthesizer:
         if not self.carla_client_cli.tm_enabled:
             logger.info(f"{self.__LOG_PREFIX__}: Traffic manager is not enabled, skipping the vehicle autopilot setup.")
             return
-        for vehicle in self.carla_client_cli.vehicles:
+        vehicles = self.carla_client_cli.ego_vehicles + self.carla_client_cli.vehicles if self.tm_enable_autopilot_for_all_vehicles else self.carla_client_cli.vehicles
+        for vehicle in vehicles:
             # Set speed
             if self.carla_client_cli.tm_speed == TMActorSpeedMode.RANDOM.value:
                 self.carla_client_cli.traffic_manager.set_desired_speed(vehicle.actor, random.uniform(TMActorSpeedMode.MIN.value, TMActorSpeedMode.MAX.value))
