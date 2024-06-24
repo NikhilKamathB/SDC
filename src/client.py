@@ -56,7 +56,7 @@ class CarlaClientCLI:
         self.map = kwargs.get("map", "Town01")
         self.map_dir = kwargs.get("map_dir", "/Game/Carla/Maps")
         self.world_configuration = kwargs.get("world_configuration", "./data/config/world0.yaml")
-        self.vehicles, self.sensors = [], []
+        self.ego_vehicles, self.vehicles, self.sensors = [], [], []
         self.walkers = []
         self.specator = None
         self.specator_attahced_to = None
@@ -158,33 +158,41 @@ class CarlaClientCLI:
                 blueprint_id=raw_vehicle.blueprint_id,
                 role_name=raw_vehicle.role_name,
                 location=raw_vehicle.to_carla_location(),
-                rotation=raw_vehicle.to_carla_rotation()
+                rotation=raw_vehicle.to_carla_rotation(),
+                is_ego=raw_vehicle.is_ego,
             )
             # Log vehicle spawned.
             logger.info(
                 f"{self.__LOG_PREFIX__}: Vehicle spawned with details: {vehicle}")
             if vehicle is not None:
-                self.vehicles.append(vehicle)
+                if vehicle.is_ego:
+                    self.ego_vehicles.append(vehicle)
+                else:
+                    self.vehicles.append(vehicle)
                 # Spawn the RGB cameras for the vehicle.
                 vehicle_rgb_cameras = raw_vehicle.sensors.create_camera_rgb_objects(
                     world=self.world,
                     parent=vehicle.actor,
                 )
+                vehicle.add_rgb_camera(vehicle_rgb_cameras)
                 # Spawn the depth cameras for the vehicle.
                 vehicle_depth_cameras = raw_vehicle.sensors.create_camera_depth_objects(
                     world=self.world,
                     parent=vehicle.actor,
                 )
+                vehicle.add_depth_camera(vehicle_depth_cameras)
                 # Spawn the segmentation cameras for the vehicle.
                 vehicle_semantic_segmentation_cameras = raw_vehicle.sensors.create_camera_semantic_segmentation_objects(
                     world=self.world,
                     parent=vehicle.actor,
                 )
+                vehicle.add_semantic_segmentation_camera(vehicle_semantic_segmentation_cameras)
                 # Spawn the instance segmentation cameras for the vehicle.
                 vehicle_instance_segmentation_cameras = raw_vehicle.sensors.create_camera_instance_segmentation_objects(
                     world=self.world,
                     parent=vehicle.actor,
                 )
+                vehicle.add_instance_segmentation_camera(vehicle_instance_segmentation_cameras)
                 # Update the sensors list.
                 self.sensors += vehicle_rgb_cameras + vehicle_depth_cameras + vehicle_semantic_segmentation_cameras + vehicle_instance_segmentation_cameras
                 # Log the sensors spawned.
@@ -303,7 +311,7 @@ class CarlaClientCLI:
             self.specator = self.world.get_spectator()
             if self.spectator_enabled and self.spectator_attachment_mode != enum.SpectatorAttachmentMode.DEFAULT.value:
                 if self.spectator_attachment_mode == enum.SpectatorAttachmentMode.VEHICLE.value:
-                    _actor = random.choice(self.vehicles)
+                    _actor = random.choice(self.ego_vehicles)
                 elif self.spectator_attachment_mode == enum.SpectatorAttachmentMode.PEDESTRIAN.value:
                     _actor = random.choice(self.walkers)[0] # Get the walker and not the controller
                 else:
@@ -358,6 +366,9 @@ class CarlaClientCLI:
         logger.info(
             f"{self.__LOG_PREFIX__}: Clearing the environment for the Carla server")
         try:
+            # Destroy the ego vehicles from the Carla environment.
+            for ego_vehicle in self.ego_vehicles:
+                ego_vehicle.destroy()
             # Destroy the vehicles from the Carla environment.
             for vehicle in self.vehicles:
                 vehicle.destroy()

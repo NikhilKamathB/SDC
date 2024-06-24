@@ -263,6 +263,7 @@ class Vehicle(_BaseActor):
     """
     blueprint_id: Optional[str] = random.choice(list(Gen2VehicleType)).value
     role_name: Optional[str] = "vehicle"
+    is_ego: Optional[bool] = False
     sensors: Optional[Sensor] = None
 
 

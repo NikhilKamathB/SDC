@@ -49,7 +49,7 @@ class HighLevelMotionPlanner:
         self.default_start_node_idx = 0
         self.default_goal_node_idx = -1
     
-    def _get_distance_metric(self) -> Type[algorithms.DistanceMetric]:
+    def _set_distance_metric(self) -> Type[algorithms.DistanceMetric]:
         """
         Get the distance metric.
         Return: The distance metric.
@@ -61,7 +61,7 @@ class HighLevelMotionPlanner:
         else:
             raise ValueError(f"Invalid distance metric: {self.distance_metric}")
     
-    def _get_search_algorithm(self) -> Type[algorithms.SearchAlgorithm]:
+    def _set_search_algorithm(self) -> Type[algorithms.SearchAlgorithm]:
         """
         Get the search algorithm.
         Return: The search algorithm.
@@ -266,8 +266,8 @@ class HighLevelMotionPlanner:
         algd3 = algorithms.AlgorithmD3()
         path = algd3.search(
             **graph,
-            method=self._get_search_algorithm(),
-            distance_metric=self._get_distance_metric(),
+            method=self._set_search_algorithm(),
+            distance_metric=self._set_distance_metric(),
             node_prefix_name="",
             bidirectional=False
         )

@@ -6,9 +6,10 @@ import carla
 import random
 import logging
 
-from typing import Union
+from typing import Union, List
 from src.base.mixin import ActorMixin
 from src.model.enum import VehicleDoor, VehicleLightState, Gen2VehicleType
+from src.base.sensor import CameraRGB, CameraDepth, CameraSemanticSegmentation, CameraInstanceSegmentation
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,99 @@ class Vehicle(ActorMixin):
         super().__init__(world, blueprint_id, role_name, location, rotation,
                          spawn_on_road=True, spawn_on_side=False)
         self._build(**kwargs)
-        
+        self._is_ego = kwargs.get("is_ego", False)
+        self._rgb_cameras = []
+        self._depth_cameras = []
+        self._semantic_segmentation_cameras = []
+        self._instance_segmentation_cameras = []
+    
+    def is_ego(self) -> bool:
+        """
+        Check if this vehicle is an ego vehicle.
+        Returns: bool
+        """
+        return self._is_ego
+    
+    def add_rgb_camera(self, rgb_camera: Union[CameraRGB, List[CameraRGB]]) -> None:
+        """
+        Add an RGB camera to the vehicle.
+        Input parameters:
+            - rgb_camera: a list or an instance of an RGB camera to be added.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Adding reference of an RGB camera to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        if isinstance(rgb_camera, list):
+            self._rgb_cameras.extend(rgb_camera)
+        else:
+            self._rgb_cameras.append(rgb_camera)
+    
+    def add_depth_camera(self, depth_camera: Union[CameraDepth, List[CameraDepth]]) -> None:
+        """
+        Add a depth camera to the vehicle.
+        Input parameters:
+            - depth_camera: a list or an instance of a depth camera to be added.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Adding reference of a depth camera to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        if isinstance(depth_camera, list):
+            self._depth_cameras.extend(depth_camera)
+        else:
+            self._depth_cameras.append(depth_camera)
+    
+    def add_semantic_segmentation_camera(self, semantic_segmentation_camera: Union[CameraSemanticSegmentation, List[CameraSemanticSegmentation]]) -> None:
+        """
+        Add a semantic segmentation camera to the vehicle.
+        Input parameters:
+            - semantic_segmentation_camera: a list or an instance of a semantic segmentation camera to be added.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Adding reference of a semantic segmentation camera to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        if isinstance(semantic_segmentation_camera, list):
+            self._semantic_segmentation_cameras.extend(semantic_segmentation_camera)
+        else:
+            self._semantic_segmentation_cameras.append(semantic_segmentation_camera)
+    
+    def add_instance_segmentation_camera(self, instance_segmentation_camera: Union[CameraInstanceSegmentation, List[CameraInstanceSegmentation]]) -> None:
+        """
+        Add an instance segmentation camera to the vehicle.
+        Input parameters:
+            - instance_segmentation_camera: a list or an instance of an instance segmentation camera to be added.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Adding reference of an instance segmentation camera to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        if isinstance(instance_segmentation_camera, list):
+            self._instance_segmentation_cameras.extend(instance_segmentation_camera)
+        else:
+            self._instance_segmentation_cameras.append(instance_segmentation_camera)
+    
+    def get_rgb_cameras(self) -> List[CameraRGB]:
+        """
+        Get the RGB cameras attached to the vehicle.
+        Returns: List[CameraRGB]
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the RGB cameras attached to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        return self._rgb_cameras
+
+    def get_depth_cameras(self) -> List[CameraDepth]:
+        """
+        Get the depth cameras attached to the vehicle.
+        Returns: List[CameraDepth]
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the depth cameras attached to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        return self._depth_cameras
+
+    def get_semantic_segmentation_cameras(self) -> List[CameraSemanticSegmentation]:
+        """
+        Get the semantic segmentation cameras attached to the vehicle.
+        Returns: List[CameraSemanticSegmentation]
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the semantic segmentation cameras attached to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        return self._semantic_segmentation_cameras
+    
+    def get_instance_segmentation_cameras(self) -> List[CameraInstanceSegmentation]:
+        """
+        Get the instance segmentation cameras attached to the vehicle.
+        Returns: List[CameraInstanceSegmentation]
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the instance segmentation cameras attached to the vehicle with id {self.actor.id} | {self.blueprint_id}")
+        return self._instance_segmentation_cameras
+    
     def close_door(self, door_id: carla.VehicleDoor = VehicleDoor.ALL.value, is_random: bool = False) -> bool:
         """
         Close the door of the vehicle.
