@@ -306,11 +306,33 @@ class HighLevelMotionPlanner:
         )
         return path
 
-    def run(self) -> None:
+    def _get_closest_waypoint_idx(self, location: np.ndarray) -> Tuple[int, float]:
+        """
+        Get the closest waypoint index for the given location.
+        Input parameters:
+            - location: np.ndarray - the location.
+        Return: A tuple containing the closest waypoint index and the distance.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the closest waypoint index for the given location")
+        closest_node_dst, closest_node_idx = np.inf, None
+        for node, idx in self.node_to_idx.items():
+            node_dst = np.linalg.norm(location - self.node_dict[node])
+            if node_dst < closest_node_dst:
+                closest_node_dst, closest_node_idx = node_dst, idx
+        return (closest_node_idx, closest_node_dst)
+
+    def run(self, start_location: np.ndarray = None, goal_location: np.ndarray = None) -> None:
         """
         Run the high level motion planner.
+        Input parameters:
+            - start_location: np.ndarray - the start location of the player - shape (1, 3)
+            - goal_location: np.ndarray - the goal location of the player - shape (1, 3)
         """
         logger.info(f"{self.__LOG_PREFIX__}: Running the high level motion planner")
+        if start_location is not None:
+            self.start_node_idx, _ = self._get_closest_waypoint_idx(start_location)
+        if goal_location is not None:
+            self.goal_node_idx, _ = self._get_closest_waypoint_idx(goal_location)
         try:
             path = self._plan_route()
             w_start_segment = np.ndarray((0, 3)) # x, y, z - R3 space
