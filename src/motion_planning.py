@@ -48,6 +48,7 @@ class HighLevelMotionPlanner:
         self.verbose = kwargs.get("verbose", True)
         self.default_start_node_idx = 0
         self.default_goal_node_idx = -1
+        self.graph, self.node_dict, self.node_to_idx, self.idx_to_node, self.start_node_idx, self.goal_node_idx, self.map_df = self._create_graph()
     
     def _set_distance_metric(self) -> Type[algorithms.DistanceMetric]:
         """
@@ -158,19 +159,37 @@ class HighLevelMotionPlanner:
         end_segment_df = df[(df["road_id"] == end_road_id) & (df["section_id"] == end_section_id) & (df["lane_sign"] == end_lane_sign)]
         return (start_segment_df, end_segment_df, self._make_node_name(start_road_id, start_section_id, start_lane_sign), self._make_node_name(end_road_id, end_section_id, end_lane_sign))
 
-    def _set_start_and_goal_state(self, start_segments: np.ndarray, end_segments: np.ndarray, total_waypoints: int) -> Tuple[int, int]:
+    def _get_annotations_for_plotting(self, node_dict: defaultdict, node_to_idx: dict) -> Tuple[np.ndarray, List[str]]:
+        """
+        Get the annotations for plotting.
+        Input parameters:
+            - node_dict: defaultdict - the node dictionary.
+            - node_to_idx: dict - the node to index mapping.
+        Return: A tuple containing the annotations and the node names.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting the annotations for plotting")
+        points = np.ndarray((0, 3))
+        node_names = []
+        for node, idx in node_to_idx.items():
+            points = np.vstack((points, node_dict[node]))
+            node_names.append(idx)
+        return (points, node_names)
+    
+    def _set_start_and_goal_state(self, start_segments: np.ndarray, end_segments: np.ndarray, node_dict: defaultdict, node_to_idx: dict) -> Tuple[int, int]:
         """
         Set the start and goal state for the motion planner.
         Input parameters:
             - start_segments: np.ndarray - the start segments of the edges.
             - end_segments: np.ndarray - the end segments of the edges.
-            - total_waypoints: int - the total number of waypoints.
+            - node_dict: defaultdict - the node dictionary.
+            - node_to_idx: dict - the node to index mapping.
         Return: A tuple containing the start and goal node index.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Setting the start and goal state for the motion planner")
         if not self.set_start_state and not self.set_goal_state:
             return (self.default_start_node_idx, self.default_goal_node_idx)
         input_text_attrs = []
+        total_waypoints = len(node_dict)
         start_node_idx, goal_node_idx = None, None
         if not self.set_start_state:
             start_node_idx = random.randint(0, total_waypoints - 1)
@@ -181,7 +200,8 @@ class HighLevelMotionPlanner:
         else:
             input_text_attrs.append(("Goal Node Index", self.default_goal_node_idx))
         if input_text_attrs:
-            response = plot_3d_matrix(start_segments, end_segments, figaspect=self.figaspect, title="Start and Goal State Setter", need_user_input=True, input_text_attrs=input_text_attrs, default_response=[self.default_start_node_idx, self.default_goal_node_idx])
+            annotations = self._get_annotations_for_plotting(node_dict, node_to_idx)
+            response = plot_3d_matrix(start_segments, end_segments, matrix1_annotations=annotations, figaspect=self.figaspect, title="Start and Goal State Setter", need_user_input=True, input_text_attrs=input_text_attrs, default_response=[self.default_start_node_idx, self.default_goal_node_idx])
             if start_node_idx is None and goal_node_idx is None:
                 start_node_idx, goal_node_idx = response
             elif start_node_idx is None:
@@ -193,13 +213,13 @@ class HighLevelMotionPlanner:
             except ValueError:
                 start_node_idx, goal_node_idx = self.default_start_node_idx, self.default_goal_node_idx
         return (start_node_idx, goal_node_idx)
-    
+        
     def _init_graph(self, df: pd.DataFrame) -> Tuple[defaultdict, list, pd.DataFrame]:
         """
         Initialize the graph for motion planning.
         Input parameters:
             - df: pd.DataFrame - the dataframe containing the map topology information.
-        Return: A tuple containing the node dictionary, edges starting and ending node indices, and the simplified dataframe.
+        Return: A tuple containing the node dictionary, node-to-idx and vice-versa representation, edges starting and ending node indices, and the simplified dataframe.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing the graph for motion planning")
         df_simplified = self._get_simplified_map_data(df)
@@ -207,8 +227,7 @@ class HighLevelMotionPlanner:
         w_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
         simplified_start_segment = np.ndarray((0, 3)) # x, y, z - R3 space
         simplified_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
-        node_dict = defaultdict(list)
-        node_edges = set()
+        node_dict, node_edges = defaultdict(), set()
         for segment in self.carla_client_cli.map_topology:
             w1, w2 = segment
             start_segment_df, end_segment_df, node_repr_start, node_repr_end = self._get_segments_and_representations(df_simplified, w1, w2)
@@ -226,52 +245,66 @@ class HighLevelMotionPlanner:
             _ = plot_3d_matrix(w_start_segment, w_end_segment, figaspect=self.figaspect, title="Map Topology")
             _ = plot_3d_matrix(simplified_start_segment, simplified_end_segment, figaspect=self.figaspect, title="Simplified Map Topology")
             plot_3d_roads(road1=(w_start_segment, w_end_segment), road2=(simplified_start_segment, simplified_end_segment), figaspect=self.figaspect, title="Roads")
-        start_node_idx, goal_node_idx = self._set_start_and_goal_state(simplified_start_segment, simplified_end_segment, len(node_dict))
+        node_to_idx = {node: idx for idx, node in enumerate(node_dict.keys())}
+        idx_to_node = {v: k for k, v in node_to_idx.items()}
+        start_node_idx, goal_node_idx = self._set_start_and_goal_state(simplified_start_segment, simplified_end_segment, node_dict, node_to_idx)
         node_edges = list(node_edges)
-        return (node_dict, node_edges, start_node_idx, goal_node_idx, df_simplified)
+        return (node_dict, node_to_idx, idx_to_node, node_edges, start_node_idx, goal_node_idx, df_simplified)
         
     def _create_graph(self) -> Tuple[dict, dict, dict, pd.DataFrame]:
         """
         Create the graph for motion planning.
-        Return: A dictionary containing the graph, the node to index mapping, the index to node mapping and the simplified dataframe.
+        Return: A dictionary containing:
+            - graph: dict - the graph containing the node values, node names, and edges.
+            - node_dict: defaultdict - the node dictionary containing the node values.
+            - node_to_idx: dict - the node to index mapping.
+            - idx_to_node: dict - the index to node mapping.
+            - start_node_idx: int - the start node index.
+            - goal_node_idx: int - the goal node index.
+            - df_simplified: pd.DataFrame - the simplified dataframe.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Creating the graph for the given map to solve high level motion planning")
         df_map = self._register_map_data()
-        node_dict, node_edges, start_node_idx, goal_node_idx, df_simplified = self._init_graph(df_map)
-        node_to_idx = {node: idx for idx, node in enumerate(node_dict.keys())}
-        idx_to_node = {v: k for k, v in node_to_idx.items()}
+        node_dict, node_to_idx, idx_to_node, node_edges, start_node_idx, goal_node_idx, df_simplified = self._init_graph(df_map)
         num_nodes = len(node_dict)
         edges = [(node_to_idx[edge[0]], node_to_idx[edge[1]]) for edge in node_edges]
         node_values = [node_dict[idx_to_node[idx]] for idx in range(num_nodes)]
         node_names = [idx_to_node[idx] for idx in range(num_nodes)]
         # These are the arguments of the C++ implemented search algorithm
         # Refer - https://github.com/NikhilKamathB/Algorithms/blob/main/include/algorithms.h
-        return ({
-            "num_nodes": num_nodes,
-            "node_values": node_values,
-            "node_names": node_names,
-            "edges": edges,
-            "start_node_idx": list(idx_to_node.keys())[start_node_idx],
-            "goal_node_idx": list(idx_to_node.keys())[goal_node_idx],
-        }, node_to_idx, idx_to_node, df_simplified)
+        return (
+            {
+                "num_nodes": num_nodes,
+                "node_values": node_values,
+                "node_names": node_names,
+                "edges": edges
+            },
+            node_dict,
+            node_to_idx,
+            idx_to_node,
+            list(idx_to_node.keys())[start_node_idx],
+            list(idx_to_node.keys())[goal_node_idx],
+            df_simplified
+        )
 
-    def _plan_route(self) -> Tuple[List[Tuple[Type[algorithms.NodeD3], float]], dict, dict, pd.DataFrame]:
+    def _plan_route(self) -> List[Tuple[Type[algorithms.NodeD3], float]]:
         """
         Plan the route for the given graph.
-        Return: A list of carla waypoints.
+        Return: A list of tuples containing the node and the cumulative cost.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Planning the route for the given graph")
-        graph, node_to_idx, idx_to_node, df_simplified = self._create_graph()
         # Dealing with 3-Dimensional double precision items
         algd3 = algorithms.AlgorithmD3()
         path = algd3.search(
-            **graph,
+            **self.graph,
+            start_node_idx=self.start_node_idx,
+            goal_node_idx=self.goal_node_idx,
             method=self._set_search_algorithm(),
             distance_metric=self._set_distance_metric(),
             node_prefix_name="",
             bidirectional=False
         )
-        return (path, node_to_idx, idx_to_node, df_simplified)
+        return path
 
     def run(self) -> None:
         """
@@ -279,13 +312,13 @@ class HighLevelMotionPlanner:
         """
         logger.info(f"{self.__LOG_PREFIX__}: Running the high level motion planner")
         try:
-            path, _, _, df_simplified = self._plan_route()
+            path = self._plan_route()
             w_start_segment = np.ndarray((0, 3)) # x, y, z - R3 space
             w_end_segment = np.ndarray((0, 3)) # x, y, z - R3 space
             for idx in range(len(path) - 1):
                 start_waypoint_node, _ = path[idx]
                 end_waypoint_node, _ = path[idx + 1]
-                start_segment_df, end_segment_df, _, _ = self._get_segments_and_representations(df_simplified, start_waypoint_node, end_waypoint_node)
+                start_segment_df, end_segment_df, _, _ = self._get_segments_and_representations(self.map_df, start_waypoint_node, end_waypoint_node)
                 w_start_segment = np.vstack((w_start_segment, np.array([start_segment_df.x, start_segment_df.y, start_segment_df.z]).T))
                 w_end_segment = np.vstack((w_end_segment, np.array([end_segment_df.x, end_segment_df.y, end_segment_df.z]).T))
             if self.verbose:
@@ -293,7 +326,7 @@ class HighLevelMotionPlanner:
                 w_ref_end_segment = np.ndarray((0, 3))
                 for segment in self.carla_client_cli.map_topology:
                     w1, w2 = segment
-                    start_segment_df, end_segment_df, _, _ = self._get_segments_and_representations(df_simplified, w1, w2)
+                    start_segment_df, end_segment_df, _, _ = self._get_segments_and_representations(self.map_df, w1, w2)
                     w_ref_start_segment = np.vstack((w_ref_start_segment, np.array([start_segment_df.x, start_segment_df.y, start_segment_df.z]).T))
                     w_ref_end_segment = np.vstack((w_ref_end_segment, np.array([end_segment_df.x, end_segment_df.y, end_segment_df.z]).T))
                 plot_3d_roads(road1=(w_ref_start_segment, w_ref_end_segment), road2=(w_start_segment, w_end_segment), figaspect=self.figaspect, title="Road After High Level Motion Planning")

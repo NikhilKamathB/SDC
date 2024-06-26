@@ -7,6 +7,7 @@ import yaml
 import string
 import random
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from rich.table import Table
@@ -163,12 +164,14 @@ def write_txt_report_style_1(files: List[str], output_file: str, sensor_type: st
 def plot_3d_matrix(
         matrix1: np.ndarray, 
         matrix2: np.ndarray = None, 
-        matrix1_annotations: Tuple[np.ndarray, list] = None, 
-        matrix2_annotations: Tuple[np.ndarray, list] = None, 
-        matrix1_annotations_offset: float = 0.5, 
-        matrix2_annotations_offset: float = -0.5, 
+        matrix1_annotations: Tuple[np.ndarray, List[str]] = None, 
+        matrix2_annotations: Tuple[np.ndarray, List[str]] = None, 
+        matrix1_annotations_offset: float = 0.0125, 
+        matrix2_annotations_offset: float = -0.0125, 
         matrix1_color: str = 'r', 
         matrix2_color: str = 'b', 
+        matrix1_annotations_color: str = 'k',
+        matrix2_annotations_color: str = 'k',
         axis_labels: Tuple[str, str, str] = ['X', 'Y', 'Z'], 
         figaspect: float = 0.5, 
         title: str = "", 
@@ -189,12 +192,14 @@ def plot_3d_matrix(
     Input parameters:
         - matrix1: np.ndarray - the first matrix.
         - matrix2: np.ndarray - the second matrix.
-        - matrix1_annotations: Tuple[np.ndarray, list] - the annotations for the first matrix.
-        - matrix2_annotations: Tuple[np.ndarray, list] - the annotations for the second matrix.
+        - matrix1_annotations: Tuple[np.ndarray, List[str]] - the annotations for the first matrix.
+        - matrix2_annotations: Tuple[np.ndarray, List[str]] - the annotations for the second matrix.
         - matrix1_annotations_offset: float - the offset for the annotations of the first matrix.
         - matrix2_annotations_offset: float - the offset for the annotations of the second matrix.
         - matrix1_color: str - the color of the first matrix.
         - matrix2_color: str - the color of the second matrix.
+        - matrix1_annotations_color: str - the color of the annotations of the first matrix.
+        - matrix2_annotations_color: str - the color of the annotations of the second matrix.
         - axis_labels: Tuple[str, str, str] - the labels for the first matrix.
         - figaspect: float - the aspect ratio of the figure.
         - title: str - the title of the plot.
@@ -242,11 +247,11 @@ def plot_3d_matrix(
     if matrix1_annotations is not None:
         itr_matrix1_range = min(matrix1_annotations[0].shape[0], len(matrix1_annotations[1]))
         for i in range(itr_matrix1_range):
-            ax.text(matrix1_annotations[0][i, 0], matrix1_annotations[0][i, 1], matrix1_annotations[0][i, 2] + matrix1_annotations_offset, c=matrix1_color, s=matrix1_annotations[1][i])
+            ax.text(matrix1_annotations[0][i, 0], matrix1_annotations[0][i, 1], matrix1_annotations[0][i, 2] + matrix1_annotations_offset, c=matrix1_annotations_color, s=matrix1_annotations[1][i])
     if matrix2 is not None and matrix2_annotations is not None:
         itr_matrix2_range = min(matrix2_annotations[0].shape[0], len(matrix2_annotations[1]))
         for i in range(itr_matrix2_range):
-            ax.text(matrix2_annotations[0][i, 0], matrix2_annotations[0][i, 1], matrix2_annotations[0][i, 2] + matrix2_annotations_offset, c=matrix2_color, s=matrix2_annotations[1][i])
+            ax.text(matrix2_annotations[0][i, 0], matrix2_annotations[0][i, 1], matrix2_annotations[0][i, 2] + matrix2_annotations_offset, c=matrix2_annotations_color, s=matrix2_annotations[1][i])
     ax.legend()
     ax.set_xlabel(axis_labels[0])
     ax.set_ylabel(axis_labels[1])
