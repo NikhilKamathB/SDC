@@ -1,4 +1,4 @@
 [core]
-    remote = hotdsk
-['remote "hotdsk"']
-    url = /media/tyche/hotdsk/data/carla
+    remote = local
+['remote "local"']
+    url = /media/tyche/hotdsk/data/local/carla
