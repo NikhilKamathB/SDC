@@ -1,21 +1,22 @@
-################################################################################################################
+########################################################################################################################
 # This will be the driver function. It contains the CLI bundle for executing various commands.
-################################################################################################################
+# To get to know more about the module run: `python -m main --help`
+########################################################################################################################
 
 import os
 import glob
 import logging
 import typer as T
 from dotenv import load_dotenv
-from typing import Optional, List
-from src import print_param_table, read_yaml, write_yaml
-from src import (
-    CarlaClientCLI, DataSynthesizer, HighLevelMotionPlanner,
-    DistanceMetric, SearchAlgorithm,
-    SensorConvertorType, SpectatorAttachmentMode, TMActorSpeedMode,
-    generate_vehicle_config, generate_pedestrian_config,
-    write_txt_report_style_1
-)
+from typing import Optional, List, TYPE_CHECKING
+from src import print_param_table
+from utils import only_linux
+if TYPE_CHECKING:
+    from src import (
+        read_yaml, write_yaml,
+        CarlaClientCLI, DataSynthesizer, HighLevelMotionPlanner, SensorConvertorType,
+        generate_vehicle_config, generate_pedestrian_config, write_txt_report_style_1
+    )
 
 
 __app__ = T.Typer()
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------  DATA  ------------------------------------------------------------------------
 @__app__.command(name="generate_synthetic_data", help="This command generates synthetic data from various sensors in the Carla environment.")
+@only_linux
 def generate_synthetic_data(
     hostname: Optional[str] = T.Option(
         os.getenv("HOSTNAME", "localhost"), help="The hostname of the Carla server."),
@@ -50,7 +52,7 @@ def generate_synthetic_data(
     tm_seed: Optional[int] = T.Option(
         42, help="The seed for the traffic manager."),
     tm_speed: Optional[float] = T.Option(
-        TMActorSpeedMode.DEFAULT.value, help="The speed for actors controlled by the traffic manager."),
+        60.0, help="The speed for actors controlled by the traffic manager."),
     tm_enable_autopilot_for_all_vehicles: Optional[bool] = T.Option(
         False, help="Whether to enable autopilot for all the vehicles - including ego vehicles - or not."),
     rfps: Optional[int] = T.Option(
@@ -58,7 +60,7 @@ def generate_synthetic_data(
     spectator_enabled: Optional[bool] = T.Option(
         True, help="Whether to enable the spectator for custom spawning or not."),
     spectator_attachment_mode: Optional[str] = T.Option(
-        SpectatorAttachmentMode.EGO_VEHICLE.value, help="The mode of attachment for the spectator [d - default, e - ego vehicle, p - pedestrian, v - vehicle]."),
+        'd', help="The mode of attachment for the spectator [d - default, e - ego vehicle, p - pedestrian, v - vehicle]."),
     spectator_location_offset: Optional[List[float]] = T.Option(
         [-7.0, 0.0, 5.0], help="The location offset for the spectator in [x, y, z] format. This is only applicable when the spectator is attached to the vehicle."),
     spectator_rotation: Optional[List[float]] = T.Option(
@@ -132,6 +134,7 @@ def generate_synthetic_data(
         raise e
 
 @__app__.command(name="generate_configuration", help="This command generates configuration file for actors in the Carla environment.")
+@only_linux
 def generate_configuration(
     number_of_actors: Optional[int] = T.Option(
         50, help="The number of actors to be spawned in the Carla environment."),
@@ -174,6 +177,7 @@ def generate_configuration(
 
 
 @__app__.command(name="generate_synthetic_data_report", help="This command generates report for all data generated synthetically.")
+@only_linux
 def generate_synthetic_data_report(
     data_dir: Optional[str] = T.Option(
         "./data/raw", help="The directory where the synthetic data is stored."),
@@ -218,6 +222,7 @@ def generate_synthetic_data_report(
 
 # ---------------------------------------------  MOTION PLANNING  -------------------------------------------------------------
 @__app__.command(name="generate_route", help="This command generates a graph of the given Carla Town map and uses it to find a path from the start to the goal.")
+@only_linux
 def generate_route(
     hostname: Optional[str] = T.Option(
         os.getenv("HOSTNAME", "localhost"), help="The hostname of the Carla server."),
@@ -231,8 +236,8 @@ def generate_route(
         "/Game/Carla/Maps", help="The directory where the maps are stored."),
     world_configuration: Optional[str]=T.Option(
         "./data/config/world0.yaml", help="The configuration file for the Carla world that holds defintion to smaller details."),
-    distance_metric: Optional[str] = T.Option(DistanceMetric.EUCLIDEAN.value, help="The distance metric to be used for the search algorithm. Your options are [euclidean, manhattan]."),
-    search_algorithm: Optional[str] = T.Option(SearchAlgorithm.A_STAR.value, help="The search algorithm to be used for finding the path. Your options are [bfs, dfs, ucs, astar]."),
+    distance_metric: Optional[str] = T.Option("euclidean", help="The distance metric to be used for the search algorithm. Your options are [euclidean, manhattan]."),
+    search_algorithm: Optional[str] = T.Option("astar", help="The search algorithm to be used for finding the path. Your options are [bfs, dfs, ucs, astar]."),
     set_start_state: Optional[bool] = T.Option(True, help="Whether to manually set start state or not."),
     set_goal_state: Optional[bool] = T.Option(True, help="Whether to manually set goal state or not."),
     delimiter: Optional[str] = T.Option("__", help="The delimiter for the node representation."),
@@ -274,6 +279,10 @@ def generate_route(
         logger.error(
             f"An error occurred while generating the map graph: {e}")
         raise e
+
+@__app__.command(name="hello_world", help="Hello World!")
+def hello_world():
+    print("Hello World!")
 
 
 if __name__ == "__main__":

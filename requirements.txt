@@ -14,4 +14,4 @@ dvc[gs]
 PyYAML
 python-dotenv
 matplotlib
-carla~=0.9.15
+carla~=0.9.15; platform_system == "Linux"

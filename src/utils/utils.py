@@ -7,7 +7,6 @@ import yaml
 import string
 import random
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from rich.table import Table
@@ -15,7 +14,6 @@ from rich.console import Console
 from collections import defaultdict
 from typing import List, Tuple, Union
 from matplotlib.widgets import TextBox
-from src.model.enum import Gen1VehicleType, Gen2VehicleType, WalkerType
 
 
 def generate_random_string(length: int = 10) -> str:
@@ -73,6 +71,7 @@ def generate_vehicle_configuration_dict(reference_dict: dict, sample_id: int) ->
         - reference_dict: dict - the reference dictionary.
         - sample_id: int - the id of the sample.
     """
+    from src.model.enum import Gen1VehicleType, Gen2VehicleType
     blueprint_id = random.choice(list(Gen1VehicleType) + list(Gen2VehicleType)).value
     random_role_id = generate_random_string()
     role_name = f"vehicle_{sample_id}_{random_role_id}"
@@ -112,6 +111,7 @@ def generate_pedestrian_configuration_dict(reference_dict: dict, sample_id: int)
         - reference_dict: dict - the reference dictionary.
         - sample_id: int - the id of the sample.
     """
+    from src.model.enum import WalkerType
     blueprint_id = random.choice(list(WalkerType)).value
     random_role_id = generate_random_string()
     role_name = f"pedestrian_{sample_id}_{random_role_id}"
