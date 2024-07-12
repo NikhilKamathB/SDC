@@ -16,14 +16,15 @@ layout:
 
 ## 🔧 Prerequisites
 
-Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/) to get to know about the Carla simulator. Install [docker](https://docs.docker.com/) and have it running. Once you are done with this, you may clone the [SDC](https://github.com/NikhilKamathB/SDC) repository. Follow the **Setup** section to have the Carla simulator up and running.
+Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/) to get to know about the Carla simulator. Install [docker](https://docs.docker.com/) and have it running. Once you are done with this, you may clone the [SDC](https://github.com/NikhilKamathB/SDC) repository. Follow the **Setup** sections to have the the entire repo active and running. The **Setup 1** section involves manual installation of dependencies and packages. The next section **Setup 2** is pretty straight forward and must be very simple.
 
-## 🧰 Setup
+## 🧰 Setup 1
 
 * Have accounts setup in GitHub and GitLab to access all modules required.
-* Install Nvidia Drivers
+* Make sure you have Iinstalled Nvidia Drivers
 * Install `C++` compiler
 * Install `CMake`
+* Have a python environment created and activate it.&#x20;
 * For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
 ```
@@ -32,7 +33,32 @@ docker pull carlasim/carla:<tag>      # eg: carlasim/carla:0.9.15
 docker run --rm -it -d --privileged --gpus all --net=host --name carla-server carlasim/carla:<tag> /bin/bash ./CarlaUE4.sh -RenderOffScreen
 ```
 
-* Alternatively, if you want to have the server up with rendering enabled, you may follow these steps:
+* In this project we will be making use of Argoverse datasets and their utilities. Refer the [Agroverse guide](https://argoverse.github.io/user-guide/argoverse\_2.html) for a deeper dive. As per their instructions ([downloading the ave package](https://argoverse.github.io/user-guide/getting\_started.html#installing-via-pip)), we will be install Rust. You may install Rust from [here](https://www.rust-lang.org/tools/install). Once you have installed Rust, switch to the nightly build of Rust as per the [Agroverse installation guide](https://argoverse.github.io/user-guide/getting\_started.html#installing-via-pip) by running `rustup default nightly`.&#x20;
+
+## 💼 Setup 2
+
+This step ought to be executed using the `./setup.sh` script that can be found at the root of the parent directory. The bash script does the following:
+
+1. Updates the DVC components
+2. Installs required Python packages
+3. Installs the Argoverse dependencies
+4. Updates the git submodules
+5. Builds the \`[Algorithms](https://github.com/NikhilKamathB/Algorithms)\` library
+
+* For this to work you have to set the following environemnt variables:
+  * `DVC_DATA_PATH=<PATH_TO_DVC_LOCAL_STORAGE>         # Section 1`
+  * `INSTALL_SIMPAN_DEPENDENCIES=<BOOL>        # whether to install dependencies associated with "SimPan" project or not - Section 2`
+  * `AV2_DIRECTORY=<PATH_TO_STORE_AGROVERSE_PROJECT>        # Section 3`
+* Note - You may skip the dedicated sections in the bash script by not providing the corresponding environment variables.
+* With your environment activated, run
+
+```
+./setup.sh
+```
+
+## 💱Miscellaneous
+
+* If you want to have the carla server up with rendering enabled, you may follow these steps:
 
 ```
 xhost +local:docker      # Allow docker containers to display on the host's X server
@@ -40,30 +66,22 @@ xhost +local:docker      # Allow docker containers to display on the host's X se
 docker run --rm -it -d --privileged --gpus all --net=host --name carla-server -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix carlasim/carla:<tag> /bin/bash ./CarlaUE4.sh
 ```
 
-* Create and activate an environment. Note that this project is using `Python 3.8`. Install requirements using pip from the requirements file found in `./SDC` folder:
-
-```
-pip install -r requirements.txt
-pip install -r requirements-simpan.txt    # [Optional] - use this with SimPan
-```
-
-* Install and build all dependencies required by running `./setup.sh`. This will build all the other dependencies needed.
-  * Git submodules used:
-    * [Algorithms](https://github.com/NikhilKamathB/Algorithms)
-* Miscelleneous
-  * If you running the container with rendering enabled - remember to revert the permissions you set with xhost for security reasons once you're done - `xhost -local:docker`.
-  * Note that if you want to run the python client (getting pygame window up in Mac) from your Mac, then you have to setup X11 Forwarding. Do the follwing for setting this up:
-    * Download and install XQuartz from [here](https://www.xquartz.org/).
-      * After installation, log out and log back in to ensure XQuartz starts properly.
-      * Upon opening the XQuartz terimal, run `ssh -Y username@remote-server` for secure connection. You may then simply run your script.
-      * The downside is that the visualization and communication will have a noticable latency.
-  * Another note - if you are using conda environment remember to run `conda install -c conda-forge libstdcxx-ng` wiith your environment active (to solve MESA-LOADER error).&#x20;
+* If you running the container with rendering enabled - remember to revert the permissions you set with xhost for security reasons once you're done - `xhost -local:docker`.
+* Note that if you want to run the python client (getting pygame window up in Mac) from your Mac, then you have to setup X11 Forwarding. Do the follwing for setting this up:
+  * Download and install XQuartz from [here](https://www.xquartz.org/).
+    * After installation, log out and log back in to ensure XQuartz starts properly.
+    * Upon opening the XQuartz terimal, run `ssh -Y username@remote-server` for secure connection. You may then simply run your script.
+    * The downside is that the visualization and communication will have a noticable latency.
+* Another note - if you are using conda environment remember to run `conda install -c conda-forge libstdcxx-ng` wiith your environment active (to solve MESA-LOADER error).&#x20;
 
 ## 🤫 Environment Variables
 
 ```
 export HOSTNAME="localhost"
 export PORT="2000"
+export DVC_DATA_PATH="<PATH_TO_DVC_LOCAL_STORAGE>"
+export INSTALL_SIMPAN_DEPENDENCIES=true
+export AV2_DIRECTORY="<PATH_TO_STORE_AGROVERSE_PROJECT>"
 ```
 
 ## 🧱 Folder Structure
@@ -86,7 +104,10 @@ SDC Repo.
     |- data_synthesizer.py (script for generating and storing any kind of data from any actor's point of view)
     |- motion_planning.py (script for motionl planning for our ego vehicle)
 |- test (all test cases are defined here)
+|- third_party (contains git submodules)
 |- main.py (contains the driver code)
+|- utils.py (utilities for the `main.py` file)
+|- setup.sh (bash script to setup the project)
 |- requirements.txt (holds dependencies)
 |- requirements-simpan.txt (holds dependencies - when this repo will be used as submodule with SimPam)
 ```
