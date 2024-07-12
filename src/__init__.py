@@ -19,17 +19,21 @@ if not os.path.exists(__LOGGING_DIR__):
 __setup_logger__(log_dir=__LOGGING_DIR__, level=__LOGGING_LEVEL__)
 
 from .utils.utils import print_param_table
-__all__ = ["print_param_table"]
+from .agroverse.forecasting import AV2Forecasting
+__all__ = [
+    "AV2Forecasting",
+    "print_param_table"
+]
 
 # check if os is linux
 if platform.system == "Linux":
     from .base.vehicle import Vehicle
     from .client import CarlaClientCLI
     from .base.walker import Walker, WalkerAI
+    from .model.enum import SensorConvertorType
     from .data_synthesizer import DataSynthesizer
     from .model import validators as PydanticModel
     from .motion_planning import HighLevelMotionPlanner
-    from .model.enum import SensorConvertorType
     from .utils.utils import (
         read_yaml_file as read_yaml,
         write_yaml_file as write_yaml,

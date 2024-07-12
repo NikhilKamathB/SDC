@@ -9,7 +9,7 @@ import logging
 import typer as T
 from dotenv import load_dotenv
 from typing import Optional, List, TYPE_CHECKING
-from src import print_param_table
+from src import AV2Forecasting, print_param_table
 from utils import only_linux
 if TYPE_CHECKING:
     from src import (
@@ -152,7 +152,7 @@ def generate_configuration(
     """
     # Print the configuration of this function.
     print_param_table(
-        parmas=locals(), title="Parameters for `generate_vehicle_configuration(...)`")
+        parmas=locals(), title="Parameters for `generate_configuration(...)`")
     assert (for_vehicle and for_pedestrian) == False, "Only one of `for_vehicle` and `for_pedestrian` can be True."
     try:
         logger.info("Generating configuration files for the actors...")
@@ -251,7 +251,7 @@ def generate_route(
     """
     # Print the configuration of this function.
     print_param_table(
-        parmas=locals(), title="Parameters for `generate_map_graph(...)`")
+        parmas=locals(), title="Parameters for `generate_route(...)`")
     try:
         # Initiate and configure the Carla client CLI.
         carla_cli = CarlaClientCLI(
@@ -280,9 +280,43 @@ def generate_route(
             f"An error occurred while generating the map graph: {e}")
         raise e
 
+# -----------------------------------------------------------------------------------------------------------------------------
+
+# -----------------------------------------  VISUALIZE AGROVERSE DATA  --------------------------------------------------------
+@__app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data.")
+def visualize_agroverse_forecasting_data(
+    input_directory: Optional[str] = T.Option(
+        "./data/online/av2/train", help="The directory containing the Agroverse forecasting data instance."),
+    output_directory: Optional[str] = T.Option(
+        "./data/interim", help="The directory where the visualization will be stored."),
+    scenario_id: Optional[str] = T.Option(
+        "0000b0f9-99f9-4a1f-a231-5be9e4c523f7", help="The scenario id for the Agroverse forecasting data instance."),
+    output_filename: Optional[str] = T.Option(
+        None, help="The name of the output file."),
+) -> None:
+    # Print the configuration of this function.
+    print_param_table(
+        parmas=locals(), title="Parameters for `visualize_agroverse_forecasting_data(...)`")
+    try:
+        # Instantiate and configure the Agroverse forecasting dataset instance.
+        av2_forecasting = AV2Forecasting(
+            input_directory=input_directory,
+            output_directory=output_directory,
+            scenario_id=scenario_id,
+            output_filename=output_filename
+        )
+        # Generate the scenario video for the given scenario id.
+        _ = av2_forecasting.generate_scenario_video()
+    except Exception as e:
+        logger.error(
+            f"An error occurred while visualizing the Agroverse forecasting data: {e}")
+        raise e
+    
+# -----------------------------------------------------------------------------------------------------------------------------
+
 # -----------------------------------------------  MODULE TEST  ---------------------------------------------------------------
 @__app__.command(name="hello_world", help="Hello World!")
-def hello_world():
+def hello_world() -> None:
     print("Hello World!")
 
 # -----------------------------------------------------------------------------------------------------------------------------
