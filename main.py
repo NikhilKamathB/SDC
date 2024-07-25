@@ -282,7 +282,7 @@ def generate_route(
 
 # -----------------------------------------------------------------------------------------------------------------------------
 
-# -----------------------------------------  VISUALIZE AGROVERSE DATA  --------------------------------------------------------
+# ---------------------------------------------- AGROVERSE DATA  --------------------------------------------------------------
 @__app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data.")
 def visualize_agroverse_forecasting_data(
     input_directory: Optional[str] = T.Option(
@@ -293,6 +293,30 @@ def visualize_agroverse_forecasting_data(
         "0000b0f9-99f9-4a1f-a231-5be9e4c523f7", help="The scenario id for the Agroverse forecasting data instance."),
     output_filename: Optional[str] = T.Option(
         None, help="The name of the output file."),
+    raw: Optional[bool] = T.Option(
+        True, help="Whether to visualize the data raw or not - using the av2 apis."),
+    show_pedesrian_xing: Optional[bool] = T.Option(
+        False, help="Whether to show pedestrian crossing or not."),
+    drivalble_area_alpha: Optional[float] = T.Option(
+        0.5, help="The alpha value for the drivable area plotting."),
+    drivable_area_color: Optional[str] = T.Option(
+        "#7A7A7A", help="The color for the drivable area plotting."),
+    lane_segment_style: Optional[str] = T.Option(
+        "-", help="The style for the lane segment plotting."),
+    lane_segment_linewidth: Optional[float] = T.Option(
+        1.0, help="The linewidth for the lane segment plotting."),
+    lane_segment_alpha: Optional[float] = T.Option(
+        0.5, help="The alpha value for the lane segment plotting."),
+    lane_segment_color: Optional[str] = T.Option(
+        "#E0E0E0", help="The color for the lane segment plotting."),
+    pedestrian_crossing_style: Optional[str] = T.Option(
+        "-", help="The style for the pedestrian crossing plotting."),
+    pedestrian_crossing_linewidth: Optional[float] = T.Option(
+        1.0, help="The linewidth for the pedestrian crossing plotting."),
+    pedestrian_crossing_alpha: Optional[float] = T.Option(
+        0.5, help="The alpha value for the pedestrian crossing plotting."),
+    pedestrian_crossing_color: Optional[str] = T.Option(
+        "#FF0000", help="The color for the pedestrian crossing plotting.")
 ) -> None:
     # Print the configuration of this function.
     print_param_table(
@@ -303,10 +327,22 @@ def visualize_agroverse_forecasting_data(
             input_directory=input_directory,
             output_directory=output_directory,
             scenario_id=scenario_id,
-            output_filename=output_filename
+            output_filename=output_filename,
+            raw=raw,
+            show_pedesrian_xing=show_pedesrian_xing,
+            drivable_area_alpha=drivalble_area_alpha,
+            drivable_area_color=drivable_area_color,
+            lane_segment_style=lane_segment_style,
+            lane_segment_linewidth=lane_segment_linewidth,
+            lane_segment_alpha=lane_segment_alpha,
+            lane_segment_color=lane_segment_color,
+            pedestrian_crossing_style=pedestrian_crossing_style,
+            pedestrian_crossing_linewidth=pedestrian_crossing_linewidth,
+            pedestrian_crossing_alpha=pedestrian_crossing_alpha,
+            pedestrian_crossing_color=pedestrian_crossing_color
         )
         # Generate the scenario video for the given scenario id.
-        _ = av2_forecasting.generate_scenario_video()
+        _ = av2_forecasting.visualize()
     except Exception as e:
         logger.error(
             f"An error occurred while visualizing the Agroverse forecasting data: {e}")
