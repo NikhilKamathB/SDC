@@ -33,7 +33,7 @@ class AV2Base:
                     pedestrian_crossing_style: str = '-',
                     pedestrian_crossing_linewidth: float = 1.0,
                     pedestrian_crossing_alpha: float = 0.5,
-                    pedestrian_crossing_color: str = "#FF0000"
+                    pedestrian_crossing_color: str = "#FF00FF"
                 ) -> None:
         """
         Visualize the static map.
@@ -50,7 +50,7 @@ class AV2Base:
             pedestrian_crossing_alpha (float, optional): Alpha value for pedestrian crossing. Defaults to 0.5.
             pedestrian_crossing_color (str, optional): Color of pedestrian crossing. Defaults to "#FF0000".
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Visualizing the static map.")
+        logger.debug(f"{self.__LOG_PREFIX__}: Visualizing the static map.")
         # Plot drivable area
         visualize_map(
             self.static_map,
@@ -72,7 +72,7 @@ class AV2Base:
         """
         Transform bounding box by rotating and translating it based on the heading and current location.
         """
-        logger.info(f"{AV2Base.__LOG_PREFIX__}: Transforming bounding box.")
+        logger.debug(f"{AV2Base.__LOG_PREFIX__}: Transforming bounding box.")
         bbox_length, bbox_width = bbox_size
         d = np.hypot(bbox_length, bbox_width)
         theta = np.arctan2(bbox_width, bbox_length)

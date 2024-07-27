@@ -32,14 +32,35 @@ class AV2Forecasting(AV2Base):
     """
 
     __LOG_PREFIX__ = "AV2Forecasting"
-    OBSERVATION_DURATION_TIMESTEPS = 50
-    PREDICTION_DURATION_TIMESTEPS = 60
-    STATIC_OBJECT_TYPES: Set[ObjectType] = {
+    _AV_ID = "AV"
+    _OBSERVATION_DURATION_TIMESTEPS = 50
+    _PREDICTION_DURATION_TIMESTEPS = 60
+    _DEFAULT_ACTOR_PATH_ALPHA = 1.0
+    _DRIVABLE_AREA_ALPHA = _LANE_SEGMENT_ALPHA = _PED_XING_ALPHA = 0.5
+    _DEFAULT_ACTOR_STYLE = "o"
+    _LANE_SEGMENT_STYLE = _PED_XING_STYLE = _DEFAULT_ACTOR_PATH_STYLE = "-"
+    _LANE_SEGMENT_LINEWIDTH = _PED_XING_LINEWIDTH = _DEFAULT_ACTOR_PATH_LINEWIDTH = 1.0
+    _DEFAULT_ACTOR_MARKERSIZE = 4
+    _ESTIMATED_VEHICLE_SIZE = [4.0, 2.0] # Length, Width
+    _ESTIMATED_CYCLIST_SIZE = [2.0, 0.7] # Length, Width
+    _STATIC_OBJECT_TYPES = {
         ObjectType.STATIC,
         ObjectType.BACKGROUND,
         ObjectType.CONSTRUCTION,
         ObjectType.RIDERLESS_BICYCLE,
     }
+    _DRIVABLE_AREA_COLOR = "#7A7A7A"
+    _LANE_SEGMENT_COLOR = "#E0E0E0"
+    _PED_XING_COLOR = "#FF00FF"
+    _DEFAULT_ACTOR_COLOR = "#D3E8EF"
+    _TRACK_COLORS = {
+        TrackCategory.TRACK_FRAGMENT: "#FFEE00",
+        TrackCategory.UNSCORED_TRACK: "#00FFFF",
+        TrackCategory.SCORED_TRACK: "#00FF00",
+        TrackCategory.FOCAL_TRACK: "#FF9900",
+    }
+    _AV_COLOR = _AV_PATH_COLOR = "#FF0000"
+    _FOCAL_AGENT_COLOR = _TRACK_COLORS[TrackCategory.FOCAL_TRACK]
 
     def __init__(self, *args, **kwargs) -> None:
         """
@@ -55,28 +76,6 @@ class AV2Forecasting(AV2Base):
         self.output_filename = kwargs.get("output_filename", None)
         self.raw = kwargs.get("raw", True)
         self._show_pedesrian_xing = kwargs.get("show_pedesrian_xing", False)
-        self._drivalble_area_alpha = kwargs.get("drivable_area_alpha", 0.5)
-        self._drivable_area_color = kwargs.get("drivable_area_color", "#7A7A7A")
-        self._lane_segment_style = kwargs.get("lane_segment_style", "-")
-        self._lane_segment_linewidth = kwargs.get("lane_segment_linewidth", 1.0)
-        self._lane_segment_alpha = kwargs.get("lane_segment_alpha", 0.5)
-        self._lane_segment_color = kwargs.get("lane_segment_color", "#E0E0E0")
-        self._pedestrian_crossing_style = kwargs.get("pedestrian_crossing_style", "-")
-        self._pedestrian_crossing_linewidth = kwargs.get("pedestrian_crossing_linewidth", 1.0)
-        self._pedestrian_crossing_alpha = kwargs.get("pedestrian_crossing_alpha", 0.5)
-        self._pedestrian_crossing_color = kwargs.get("pedestrian_crossing_color", "#FF0000")
-        self._default_actor_path_color = kwargs.get("default_actor_path_color", "#D3E8EF")
-        self._default_actor_path_linewidth = kwargs.get("default_actor_path_linewidth", 1.0)
-        self._default_actor_path_alpha = kwargs.get("default_actor_path_alpha", 1.0)
-        self._default_actor_path_style = kwargs.get("default_actor_path_style", "-")
-        self._focal_agent_color = kwargs.get("focal_agent_color", "#ECA25B")
-        self._av_color = kwargs.get("av_color", "#007672")
-        self._default_object_style = kwargs.get("default_object_style", "o")
-        self._default_object_markersize = kwargs.get("default_object_markersize", 4)
-        self._estimated_vehicle_size = kwargs.get("estimated_vehicle_size", [4.0, 2.0]) # Length, Width
-        assert len(self._estimated_vehicle_size) == 2, "Estimated vehicle size should be a list of length 2."
-        self._estimated_cyclist_size = kwargs.get("estimated_cyclist_size", [2.0, 0.7]) # Length, Width
-        assert len(self._estimated_cyclist_size) == 2, "Estimated cyclist size should be a list of length 2."
         self._codec = kwargs.get("codec", "mp4v")
         self._fps = kwargs.get("fps", 10)
         self.static_map_file, self.scenario_file = self._get_input_file_names()
@@ -91,7 +90,7 @@ class AV2Forecasting(AV2Base):
         """
         Make output directory.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Making output directory if not exists.")
+        logger.debug(f"{self.__LOG_PREFIX__}: Making output directory if not exists.")
         os.makedirs(self.output_directory, exist_ok=True)
     
     def _get_output_file_path(self, output_filename: str) -> Path:
@@ -113,7 +112,7 @@ class AV2Forecasting(AV2Base):
         Returns:
             Tuple[str, str]: Tuple containing static map and scenario file names.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Getting input file names.")
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting input file names.")
         static_map_file = f"log_map_archive_{self.scenario_id}.json"
         scenario_file = f"scenario_{self.scenario_id}.parquet"
         return static_map_file, scenario_file
@@ -141,7 +140,7 @@ class AV2Forecasting(AV2Base):
         Returns:
             np.ndarray: Array containing timesteps.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Getting timesteps from the scenario for track id: {track.track_id}")
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting timesteps from the scenario for track id: {track.track_id}")
         return np.array([object_state.timestep for object_state in track.object_states if timestep is not None and object_state.timestep <= timestep])
 
     def _get_actor_states(self, track: Track, timestep: int = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -153,7 +152,7 @@ class AV2Forecasting(AV2Base):
         Returns:
             Tuple[np.ndarray, np.ndarray, np.ndarray]: Tuple containing actor positions, actor headings, actor velocities.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Getting actor states from the scenario for track id: {track.track_id}")
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting actor states from the scenario for track id: {track.track_id}")
         actor_positions = np.array([list(object_state.position) for object_state in track.object_states if timestep is not None and object_state.timestep <= timestep])
         actor_headings = np.array([object_state.heading for object_state in track.object_states if timestep is not None and object_state.timestep <= timestep])
         actor_velocities = np.array([list(object_state.velocity) for object_state in track.object_states if timestep is not None and object_state.timestep <= timestep])
@@ -166,28 +165,31 @@ class AV2Forecasting(AV2Base):
             ax (plt.Axes): Matplotlib axes.
             timestep (int): Timestep.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Plotting actor/tracks for the scenario.")
+        logger.debug(f"{self.__LOG_PREFIX__}: Plotting actor/tracks for the scenario.")
         for track in self.scenario.tracks:
             # Get valid timesteps
             actor_timesteps = self._get_timesteps(track, timestep)
             if actor_timesteps.shape[0] < 1 or actor_timesteps[-1] != timestep:
                 continue
             # Get actor states
-            actor_positions, actor_headings, actor_velocities = self._get_actor_states(track, timestep)
-            # Plot actor polylines
-            actor_color = self._default_actor_path_color
-            if track.category == TrackCategory.FOCAL_TRACK:
-                actor_color = self._focal_agent_color
-                av2_plot_polylines([actor_positions], style=self._default_actor_path_style, linewidth=self._default_actor_path_linewidth, alpha=self._default_actor_path_alpha, color=actor_color)
-            elif track.track_id == "AV":
-                actor_color = self._av_color
-            elif track.object_type in self.STATIC_OBJECT_TYPES:
+            actor_positions, actor_headings, _ = self._get_actor_states(track, timestep)
+            actor_path_color = self._TRACK_COLORS.get(track.category, TrackCategory.TRACK_FRAGMENT)
+            actor_color = self._DEFAULT_ACTOR_COLOR
+            if track.track_id == self._AV_ID:
+                actor_color = self._AV_COLOR
+                actor_path_color = self._AV_PATH_COLOR
+            elif track.category == TrackCategory.FOCAL_TRACK:
+                actor_color = self._FOCAL_AGENT_COLOR
+            # Plot actor path
+            av2_plot_polylines([actor_positions], style=self._DEFAULT_ACTOR_PATH_STYLE, linewidth=self._DEFAULT_ACTOR_PATH_LINEWIDTH, alpha=self._DEFAULT_ACTOR_PATH_ALPHA, color=actor_path_color)
+            # Plot actor
+            if track.object_type in self._STATIC_OBJECT_TYPES:
                 continue
             bbox = None
             if track.object_type == ObjectType.VEHICLE:
-                bbox = tuple(self._estimated_vehicle_size)
+                bbox = tuple(self._ESTIMATED_VEHICLE_SIZE)
             elif track.object_type == ObjectType.CYCLIST or track.object_type == ObjectType.MOTORCYCLIST:
-                bbox = tuple(self._estimated_cyclist_size)
+                bbox = tuple(self._ESTIMATED_CYCLIST_SIZE)
             if bbox is not None:
                 av2_plot_bbox(
                     ax=ax,
@@ -204,8 +206,8 @@ class AV2Forecasting(AV2Base):
                 plt.plot(
                     actor_positions[-1][0],
                     actor_positions[-1][1],
-                    self._default_object_style,
-                    markersize=self._default_object_markersize,
+                    self._DEFAULT_ACTOR_STYLE,
+                    markersize=self._DEFAULT_ACTOR_MARKERSIZE,
                     color=actor_color
                 )
                 
@@ -219,21 +221,21 @@ class AV2Forecasting(AV2Base):
         """
         logger.info(f"{self.__LOG_PREFIX__}: Generating detailed scenario video for scenario id: {self.scenario_id}")
         frames: List[Image.Image] = []
-        for timestep in range(self.OBSERVATION_DURATION_TIMESTEPS + self.PREDICTION_DURATION_TIMESTEPS):
+        for timestep in range(self._OBSERVATION_DURATION_TIMESTEPS + self._PREDICTION_DURATION_TIMESTEPS):
             # Plot
             _, ax = plt.subplots()
             self._visualize_map(
                 show_pedesrian_xing=False,
-                drivable_area_alpha=self._drivalble_area_alpha,
-                drivable_area_color=self._drivable_area_color,
-                lane_segment_style=self._lane_segment_style,
-                lane_segment_linewidth=self._lane_segment_linewidth,
-                lane_segment_alpha=self._lane_segment_alpha,
-                lane_segment_color=self._lane_segment_color,
-                pedestrian_crossing_style=self._pedestrian_crossing_style,
-                pedestrian_crossing_linewidth=self._pedestrian_crossing_linewidth,
-                pedestrian_crossing_alpha=self._pedestrian_crossing_alpha,
-                pedestrian_crossing_color=self._pedestrian_crossing_color
+                drivable_area_alpha=self._DRIVABLE_AREA_ALPHA,
+                drivable_area_color=self._DRIVABLE_AREA_COLOR,
+                lane_segment_style=self._LANE_SEGMENT_STYLE,
+                lane_segment_linewidth=self._LANE_SEGMENT_LINEWIDTH,
+                lane_segment_alpha=self._LANE_SEGMENT_ALPHA,
+                lane_segment_color=self._LANE_SEGMENT_COLOR,
+                pedestrian_crossing_style=self._PED_XING_STYLE,
+                pedestrian_crossing_linewidth=self._PED_XING_LINEWIDTH,
+                pedestrian_crossing_alpha=self._PED_XING_ALPHA,
+                pedestrian_crossing_color=self._PED_XING_COLOR
             )
             self.plot_actors_tracks(ax, timestep)
             # Save plot
