@@ -3,6 +3,9 @@
 ################################################################################################################
 
 import logging
+import numpy as np
+from typing import Tuple
+from av2.utils.typing import NDArrayFloat
 from av2.map.map_api import ArgoverseStaticMap
 from src.agroverse.utils import visualize_map
 
@@ -63,3 +66,16 @@ class AV2Base:
             pedestrian_crossing_alpha=pedestrian_crossing_alpha,
             pedestrian_crossing_color=pedestrian_crossing_color
         )
+    
+    @classmethod
+    def transform_bbox(cls, current_location: NDArrayFloat, heading: float, bbox_size: Tuple[float, float]) -> Tuple[float, float]:
+        """
+        Transform bounding box by rotating and translating it based on the heading and current location.
+        """
+        logger.info(f"{AV2Base.__LOG_PREFIX__}: Transforming bounding box.")
+        bbox_length, bbox_width = bbox_size
+        d = np.hypot(bbox_length, bbox_width)
+        theta = np.arctan2(bbox_width, bbox_length)
+        x = current_location[0] - (d/2) * np.cos(heading + theta)
+        y = current_location[1] - (d/2) * np.sin(heading + theta)
+        return (x, y)

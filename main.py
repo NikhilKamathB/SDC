@@ -316,7 +316,31 @@ def visualize_agroverse_forecasting_data(
     pedestrian_crossing_alpha: Optional[float] = T.Option(
         0.5, help="The alpha value for the pedestrian crossing plotting."),
     pedestrian_crossing_color: Optional[str] = T.Option(
-        "#FF0000", help="The color for the pedestrian crossing plotting.")
+        "#FF0000", help="The color for the pedestrian crossing plotting."),
+    default_actor_path_color: Optional[str] = T.Option(
+        "#D3E8EF", help="The default color for the actors path."),
+    default_actor_path_linewidth: Optional[float] = T.Option(
+        1.0, help="The default linewidth for the actors path."),
+    default_actor_path_alpha: Optional[float] = T.Option(
+        1.0, help="The default alpha value for the actors path."),
+    default_actor_path_style: Optional[str] = T.Option(
+        "-", help="The default style for the actors path."),
+    focal_agent_color: Optional[str] = T.Option(
+        "#ECA25B", help="The color for the focal agent."),
+    av_color: Optional[str] = T.Option(
+        "#007672", help="The color for the autonomous vehicle."),
+    default_object_style: Optional[str] = T.Option(
+        "o", help="The default style for the objects."),
+    default_object_markersize: Optional[float] = T.Option(
+        4.0, help="The default markersize for the objects."),
+    estimated_vehicle_size: Optional[List[float]] = T.Option(
+        [4.0, 2.0], help="The estimated size of the vehicle in [length, width] format."),
+    estimated_cyclist_size: Optional[List[float]] = T.Option(
+        [2.0, 0.7], help="The estimated size of the cyclist in [length, width] format."),
+    codec: Optional[str] = T.Option(
+        "mp4v", help="The codec for the video."),
+    fps: Optional[int] = T.Option(
+        10, help="The frames per second for the video.")
 ) -> None:
     # Print the configuration of this function.
     print_param_table(
@@ -339,7 +363,19 @@ def visualize_agroverse_forecasting_data(
             pedestrian_crossing_style=pedestrian_crossing_style,
             pedestrian_crossing_linewidth=pedestrian_crossing_linewidth,
             pedestrian_crossing_alpha=pedestrian_crossing_alpha,
-            pedestrian_crossing_color=pedestrian_crossing_color
+            pedestrian_crossing_color=pedestrian_crossing_color,
+            default_actor_path_color=default_actor_path_color,
+            default_actor_path_linewidth=default_actor_path_linewidth,
+            default_actor_path_alpha=default_actor_path_alpha,
+            default_actor_path_style=default_actor_path_style,
+            focal_agent_color=focal_agent_color,
+            av_color=av_color,
+            default_object_style=default_object_style,
+            default_object_markersize=default_object_markersize,
+            estimated_vehicle_size=estimated_vehicle_size,
+            estimated_cyclist_size=estimated_cyclist_size,
+            codec=codec,
+            fps=fps
         )
         # Generate the scenario video for the given scenario id.
         _ = av2_forecasting.visualize()

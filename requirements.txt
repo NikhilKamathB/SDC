@@ -14,4 +14,6 @@ dvc[gs]
 PyYAML
 python-dotenv
 matplotlib
+pillow
+opencv-python
 carla~=0.9.15; platform_system == "Linux"

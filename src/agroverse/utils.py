@@ -4,8 +4,10 @@
 # 1. https://github.com/argoverse/av2-api/blob/main/src/av2/datasets/motion_forecasting/viz/scenario_visualization.py
 ###################################################################################################
 
+import numpy as np
 import matplotlib.pyplot as plt
-from typing import Sequence
+from typing import Sequence, Tuple
+from matplotlib.patches import Rectangle
 from av2.utils.typing import NDArrayFloat
 from av2.map.map_api import ArgoverseStaticMap
 
@@ -80,3 +82,25 @@ def av2_plot_polygons(polygons: Sequence[NDArrayFloat], alpha: float = 1.0, colo
     """
     for polygon in polygons:
         plt.fill(polygon[:, 0], polygon[:, 1], alpha=alpha, color=color)
+
+def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: float, color: str, bbox_size: Tuple[float, float], zorder: float = np.inf) -> None:
+    """
+    Plot bounding box representing the player.
+    Args:
+        ax (plt.Axes): Matplotlib axes instance.
+        pivot_points (Tuple[float, float]): Pivot points of the bounding box.
+        heading (float): Heading of the player, in radians.
+        color (str): Color of the bounding box.
+        bbox_size (Type[float, float]): Size of the bounding box - length and width.
+        zorder (float, optional): Z-order of the bounding box. Defaults to np.inf.
+    """
+    bbox_length, bbox_width = bbox_size
+    player_bbox = Rectangle(
+        pivot_points,
+        bbox_length,
+        bbox_width,
+        angle=np.degrees(heading),
+        color=color,
+        zorder=zorder
+    )
+    ax.add_patch(player_bbox)

@@ -5,22 +5,43 @@
 # Always run this script from the root of the Carla repository.
 # Run this script if you would life to refresh your workspace or initialize it for the first time.
 # This script will:
-# 1. Update the DVC components.
-# 2. Install required Python packages.
-# 3. Install the Argoverse dependencies.
-# 4. Update the git submodules.
-# 5. Build the `algorithms` library.
+# 1. Clear the logs.
+# 2. Update the DVC components.
+# 3. Install required Python packages.
+# 4. Install the Argoverse dependencies.
+# 5. Update the git submodules.
+# 6. Build the `algorithms` library.
 
 OS=$(uname)
 echo "You are running on $OS."
+
+# Clear logs if enabled
+echo "Clearing logs..."
+if [ -z "$CLEAR_LOGS" ]; then
+    echo "CLEAR_LOGS is not set. Please set it to true in your environment file if you would like to clear the logs. Skipping log clearing..."
+else
+    if [ "$CLEAR_LOGS" = "true" ]; then
+        (
+            cd ./logs
+            rm -rf *
+        )
+        echo "Logs cleared."
+    else
+        echo "CLEAR_LOGS is set to false. Skipping log clearing..."
+    fi
+fi
 
 # Update DVC components
 echo "Updating DVC components..."
 if [ -z "$DVC_DATA_PATH" ]; then
     echo "DVC_DATA_PATH is not set. Please set it to the path of your DVC data in your environment file. Skipping DVC setup..."
 else
-    dvc remote modify local url "$DVC_DATA_PATH"
-    echo "DVC config updated for $OS with remote URL: $DVC_DATA_PATH"
+    if [ "$UPDATE_DVC_CONFIG" = "true" ]; then
+        dvc remote modify local url "$DVC_DATA_PATH"
+        echo "DVC config updated for $OS with remote URL: $DVC_DATA_PATH"
+    else
+        echo "UPDATE_DVC_CONFIG is set to false. Skipping DVC config update..."
+    fi
 fi
 
 # Install required Python packages

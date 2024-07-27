@@ -3,12 +3,15 @@
 ###################################################################################################
 
 import os
+import cv2
 import yaml
+import copy
 import string
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from PIL import Image
 from rich.table import Table
 from rich.console import Console
 from collections import defaultdict
@@ -313,3 +316,26 @@ def plot_3d_roads(road1: Tuple[np.ndarray, np.ndarray], road2: Tuple[np.ndarray,
         ax.set_zlabel(axis_labels[2])
     fig.suptitle(title)
     plt.show()
+
+def write_video(frames: List[Image.Image], video_path: str, codec: str = "mpv4", fps: int = 10, cvt_RGB2BGR: bool = True) -> str:
+    """
+    Given a list of frames, write a video.
+    Input parameters:
+        - frames: List[Image.Image] - the list of frames.
+        - video_path: str - the path of the video.
+        - codec: str - the codec to be used for the video.
+        - fps: int - the frames per second.
+        - cvt_RGB2BGR: bool - whether to convert RGB to BGR or not.
+    Output:
+        - str: the path of the video.
+    """
+    fourcc = cv2.VideoWriter_fourcc(*codec)
+    frame_size = frames[0].size
+    out = cv2.VideoWriter(video_path, fourcc, fps=fps, frameSize=frame_size)
+    for frame in frames:
+        _frame = np.array(copy.deepcopy(frame))
+        if cvt_RGB2BGR:
+            _frame = cv2.cvtColor(_frame, cv2.COLOR_RGB2BGR)
+        out.write(_frame)
+    out.release()
+    return video_path
