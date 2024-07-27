@@ -12,7 +12,7 @@ __PATH_FILE__ = Path(__file__)
 __PATH_PKG__ = __PATH_FILE__.parent
 __PATH_ROOT__ = __PATH_FILE__.parent.parent
 __LOGGING_DIR__ = os.getenv("LOGGING_DIR", f"{__PATH_ROOT__}/logs")
-__LOGGING_LEVEL__ = logging.INFO
+__LOGGING_LEVEL__ = os.getenv("LOGGING_LEVEL", logging.INFO)
 
 if not os.path.exists(__LOGGING_DIR__):
     os.makedirs(__LOGGING_DIR__)

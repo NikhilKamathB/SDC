@@ -170,6 +170,7 @@ def generate_configuration(
                     reference_configuration, i)
                 file_path = os.path.join(config_dir, f"pedestrian_{i}.yaml")
             write_yaml(file_path, new_actor_configuration)
+        logger.info("Configuration files generated successfully!")
     except Exception as e:
         logger.error(
             f"An error occurred while generating the configuration file: {e}")
@@ -213,6 +214,7 @@ def generate_synthetic_data_report(
                 output_file = os.path.join(output_directory, f"{value}.txt")
                 write_txt_report_style_1(
                     files, output_file, value, prefix_tag, prefix_dir, need_file_name)
+        logger.info("Report generated successfully!")
     except Exception as e:
         logger.error(
             f"An error occurred while generating the synthetic data report: {e}")
