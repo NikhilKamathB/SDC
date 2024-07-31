@@ -1,0 +1,28 @@
+# This file contains the configuration of the vehicle
+# Poistion and orientation are set in the simple X-Y plane for BEV
+# You can place sensors on the vehicle by assuming that the vehicle is a rectangular box with bottom left corner at (0, 0) and top right corner at (1, 1)
+# The sensors are placed in the same coordinate system as the vehicle
+av_version: 2 # version of agroverse
+sensors:
+  cameras:
+    - rotation:
+        yaw: -135
+      location:
+        x: 0.0
+        y: 0.0
+    - rotation:
+        yaw: -45
+      location:
+        x: 1.0
+        y: 0.0
+    - rotation:
+        yaw: 45
+      location:
+        x: 1.0
+        y: 1.0
+    - rotation:
+        yaw: 135
+      location:
+        x: 0.0
+        y: 1.0
+    
