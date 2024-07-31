@@ -4,7 +4,7 @@
 
 import logging
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Union
 from av2.utils.typing import NDArrayFloat
 from av2.map.map_api import ArgoverseStaticMap
 from src.agroverse.utils import visualize_map
@@ -23,7 +23,7 @@ class AV2Base:
     static_map: ArgoverseStaticMap = None
 
     def _visualize_map(self,
-                    show_pedesrian_xing: bool = False,
+                    show_pedestrian_xing: bool = False,
                     drivable_area_alpha: float = 0.5,
                     drivable_area_color: str = "#7A7A7A",
                     lane_segment_style: str = '-',
@@ -38,7 +38,7 @@ class AV2Base:
         """
         Visualize the static map.
         Args:
-            show_pedesrian_xing (bool, optional): Show pedestrian crossing. Defaults to False.
+            show_pedestrian_xing (bool, optional): Show pedestrian crossing. Defaults to False.
             drivable_area_alpha (float, optional): Alpha value for drivable area. Defaults to 0.5.
             drivable_area_color (str, optional): Color of drivable area. Defaults to "#7A7A7A".
             lane_segment_style (str, optional): Style of lane segment. Defaults to '-'.
@@ -54,7 +54,7 @@ class AV2Base:
         # Plot drivable area
         visualize_map(
             self.static_map,
-            show_pedesrian_xing=show_pedesrian_xing,
+            show_pedestrian_xing=show_pedestrian_xing,
             drivable_area_alpha=drivable_area_alpha,
             drivable_area_color=drivable_area_color,
             lane_segment_style=lane_segment_style,
@@ -66,16 +66,34 @@ class AV2Base:
             pedestrian_crossing_alpha=pedestrian_crossing_alpha,
             pedestrian_crossing_color=pedestrian_crossing_color
         )
+
+    @classmethod
+    def transform_point(cls, ref_location: Union[NDArrayFloat, np.array], location: Union[NDArrayFloat, np.array], theta: float) -> Tuple[float, float]:
+        """
+        Transform point by rotating and translating it based on the theta and ref location; transform from `location` to `ref_location`.
+        Args:
+            ref_location (Union[NDArrayFloat, np.array]): Reference location.
+            location (Union[NDArrayFloat, np.array]): Location to be transformed.
+            theta (float): Angle of rotation.
+        Return: Tuple[float, float] - Transformed location.
+        """
+        x = ref_location[0] - (location) * np.cos(theta)
+        y = ref_location[1] - (location) * np.sin(theta)
+        return (x, y)
     
     @classmethod
-    def transform_bbox(cls, current_location: NDArrayFloat, heading: float, bbox_size: Tuple[float, float]) -> Tuple[float, float]:
+    def transform_bbox(cls, ref_location: NDArrayFloat, heading: float, bbox_size: Tuple[float, float]) -> Tuple[float, float]:
         """
-        Transform bounding box by rotating and translating it based on the heading and current location.
+        Transform bounding box by rotating and translating it based on the heading and ref location.
+        Args:
+            ref_location (NDArrayFloat): Reference location.
+            heading (float): Heading angle.
+            bbox_size (Tuple[float, float]): Bounding box size.
+        Return: Tuple[float, float] - Transformed bounding box pivot point.
         """
         logger.debug(f"{AV2Base.__LOG_PREFIX__}: Transforming bounding box.")
         bbox_length, bbox_width = bbox_size
-        d = np.hypot(bbox_length, bbox_width)
+        d = np.hypot(bbox_width, bbox_length)
         theta = np.arctan2(bbox_width, bbox_length)
-        x = current_location[0] - (d/2) * np.cos(heading + theta)
-        y = current_location[1] - (d/2) * np.sin(heading + theta)
+        x, y = AV2Base.transform_point(ref_location, d/2, theta+heading)
         return (x, y)

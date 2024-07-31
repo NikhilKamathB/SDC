@@ -14,7 +14,7 @@ from av2.map.map_api import ArgoverseStaticMap
 
 def visualize_map(
         map: ArgoverseStaticMap, 
-        show_pedesrian_xing: bool = False,
+        show_pedestrian_xing: bool = False,
         drivable_area_alpha: float = 0.5,
         drivable_area_color: str = "#7A7A7A",
         lane_segment_style: str = '-',
@@ -30,7 +30,7 @@ def visualize_map(
     Visualize the static map.
     Args:
         map (ArgoverseStaticMap): Static map instance.
-        show_pedesrian_xing (bool, optional): Show pedestrian crossing. Defaults to False.
+        show_pedestrian_xing (bool, optional): Show pedestrian crossing. Defaults to False.
         drivable_area_alpha (float, optional): Alpha value for drivable area. Defaults to 0.5.
         drivable_area_color (str, optional): Color of drivable area. Defaults to "#7A7A7A".
         lane_segment_style (str, optional): Style of lane segment. Defaults to '-'.
@@ -52,7 +52,7 @@ def visualize_map(
             lane_segemnt.right_lane_boundary.xyz
         ], style=lane_segment_style, linewidth=lane_segment_linewidth, alpha=lane_segment_alpha, color=lane_segment_color)
     # Plot pedestrian crossing
-    if show_pedesrian_xing:
+    if show_pedestrian_xing:
         for pedestrian_crossing in map.vector_pedestrian_crossings.values():
             av2_plot_polylines([
                 pedestrian_crossing.edge1.xyz,
@@ -83,7 +83,8 @@ def av2_plot_polygons(polygons: Sequence[NDArrayFloat], alpha: float = 1.0, colo
     for polygon in polygons:
         plt.fill(polygon[:, 0], polygon[:, 1], alpha=alpha, color=color)
 
-def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: float, color: str, bbox_size: Tuple[float, float], zorder: float = np.inf) -> None:
+
+def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: float, color: str, bbox_size: Tuple[float, float], rotation_point: str = "xy", zorder: float = np.inf) -> np.ndarray:
     """
     Plot bounding box representing the player.
     Args:
@@ -92,7 +93,10 @@ def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: floa
         heading (float): Heading of the player, in radians.
         color (str): Color of the bounding box.
         bbox_size (Type[float, float]): Size of the bounding box - length and width.
+        rotation_point (str, optional): Rotation point of the bounding box. Defaults to "xy".
         zorder (float, optional): Z-order of the bounding box. Defaults to np.inf.
+    Returns:
+        np.ndarray: Corners of the bounding box.
     """
     bbox_length, bbox_width = bbox_size
     player_bbox = Rectangle(
@@ -101,6 +105,8 @@ def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: floa
         bbox_width,
         angle=np.degrees(heading),
         color=color,
+        rotation_point=rotation_point,
         zorder=zorder
     )
     ax.add_patch(player_bbox)
+    return player_bbox.get_corners()

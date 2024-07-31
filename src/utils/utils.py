@@ -339,3 +339,30 @@ def write_video(frames: List[Image.Image], video_path: str, codec: str = "mpv4",
         out.write(_frame)
     out.release()
     return video_path
+
+def bilinear_interpolate(patch: np.ndarray, x_frac: float = 1.0, y_frac: float = 1.0) -> np.ndarray:
+    """
+    Perform bilinear interpolation on the patch.
+    Input parameters:
+        - patch: np.ndarray - the patch to be interpolated - format: Bottom Left, Bottom Right, Top Right, Top Left -> [[x1, y1], [x2, y2], [x3, y3], [x4, y4]].
+        - x_frac: float - the fraction in x-direction.
+        - y_frac: float - the fraction in y-direction.
+    Output:
+        - np.ndarray: the interpolated point.
+    """
+    lb, rb, rt, lt = patch
+    # Interpolate horizontally
+    x_interp_bh, y_interp_bh = (
+        lb[0] + x_frac * (rb[0] - lb[0]),
+        lb[1] + x_frac * (rb[1] - lb[1])
+    )
+    x_interp_th, y_interp_th = (
+        lt[0] + x_frac * (rt[0] - lt[0]),
+        lt[1] + x_frac * (rt[1] - lt[1])
+    )
+    # Interpolate vertically
+    x_interpolated, y_interpolated = (
+        x_interp_bh + y_frac * (x_interp_th - x_interp_bh),
+        y_interp_bh + y_frac * (y_interp_th - y_interp_bh)
+    )
+    return np.array([x_interpolated, y_interpolated])

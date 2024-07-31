@@ -297,7 +297,7 @@ def visualize_agroverse_forecasting_data(
         None, help="The name of the output file."),
     raw: Optional[bool] = T.Option(
         True, help="Whether to visualize the data raw or not - using the av2 apis."),
-    show_pedesrian_xing: Optional[bool] = T.Option(
+    show_pedestrian_xing: Optional[bool] = T.Option(
         False, help="Whether to show pedestrian crossing or not."),
     codec: Optional[str] = T.Option(
         "mp4v", help="The codec for the video."),
@@ -315,7 +315,7 @@ def visualize_agroverse_forecasting_data(
             scenario_id=scenario_id,
             output_filename=output_filename,
             raw=raw,
-            show_pedesrian_xing=show_pedesrian_xing,
+            show_pedestrian_xing=show_pedestrian_xing,
             codec=codec,
             fps=fps
         )
