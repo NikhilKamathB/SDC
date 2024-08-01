@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from pathlib import Path
 from typing import Tuple, Union, List
+from matplotlib.patches import Polygon
 from av2.map.map_api import ArgoverseStaticMap
 from av2.datasets.motion_forecasting import scenario_serialization
 from av2.datasets.motion_forecasting.data_schema import Track, TrackCategory, ObjectType
@@ -18,7 +19,7 @@ from src.agroverse.base import AV2Base
 from src.agroverse.constants import CAMERA_TYPE_NAME
 from src.agroverse.utils import av2_plot_polylines, av2_plot_bbox
 from src.utils.utils import write_video, read_yaml_file, bilinear_interpolate
-from src.agroverse.model.validators import Rotation, InternalCameraMountResponse, Vehicle as AV2Vehicle
+from src.agroverse.model.validators import InternalCameraMountResponse, Vehicle as AV2Vehicle
 
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,10 @@ class AV2Forecasting(AV2Base):
         TrackCategory.SCORED_TRACK: "#00FF00",
         TrackCategory.FOCAL_TRACK: "#FF9900",
     }
+    _DEFAULT_FONT_SIZE = 5
+    _DEFAULT_FONT_COLOR = "black"
+    _DEFAULT_FONT_X_OFFSET = 0.25
+    _DEFAULT_FONT_Y_OFFSET = 0.25
     # AV - Autonomous Vehicle
     _AV_ID = "AV"
     _AV_COLOR = _AV_PATH_COLOR = "#FF0000"
@@ -215,6 +220,21 @@ class AV2Forecasting(AV2Base):
                 ))
         return sensor_list
     
+    def _get_angle_and_unit_vector(self, point1: np.ndarray, point2: np.ndarray) -> Tuple[float, np.ndarray]:
+        """
+        Get angle and unit vector given two points - as measured from point1 to point2.
+        Args:
+            point1 (np.ndarray): Point 1 - shape (2,).
+            point2 (np.ndarray): Point 2 - shape (2,).
+        Returns:
+            Tuple[float, np.ndarray]: Tuple containing normalized angle (in radians) and unit vector.
+        """
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting angle and unit vector.")
+        delta = point1 - point2
+        theta = np.arctan2(delta[1], delta[0])
+        x_hat, y_hat = np.cos(theta), np.sin(theta)
+        return (theta, np.array([x_hat, y_hat]))
+    
     def _get_line_from_point_and_angle(self, ax: plt.Axes, point: np.ndarray, theta: float) -> Tuple[np.ndarray, np.ndarray]:
         """
         Given a point and a reference angle, get a line passing through this point keeping direction in mind.
@@ -256,6 +276,7 @@ class AV2Forecasting(AV2Base):
             x_new = point[0].item() + t * np.cos(theta)
             return np.array([x_new, y])
 
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting line from point and angle.")
         xmin, xmax = ax.get_xlim()
         ymin, ymax = ax.get_ylim()
         # Normalize theta
@@ -281,9 +302,7 @@ class AV2Forecasting(AV2Base):
         # Clean candidates to retain lines along theta
         lines = []
         for candidate in candidates:
-            delta = point - candidate
-            theta_dash = np.arctan2(delta[1], delta[0])
-            x_dash_hat, y_dash_hat = np.cos(theta_dash), np.sin(theta_dash)
+            _, (x_dash_hat, y_dash_hat) = self._get_angle_and_unit_vector(point, candidate)
             if np.isclose(np.dot([x_hat, y_hat], [x_dash_hat, y_dash_hat]), -1.0):
                 lines.append(candidate)
         if not lines or len(lines) > 1:
@@ -297,7 +316,57 @@ class AV2Forecasting(AV2Base):
             linestyle=self._AV_CAMERA_COVERAGE_STYLE,
             linewidth=self._AV_CAMERA_COVERAGE_LINEWIDTH,
         )
-        return np.array(lines[0])
+        plt.text(
+            point_2[0] + self._DEFAULT_FONT_X_OFFSET,
+            point_2[1] + self._DEFAULT_FONT_Y_OFFSET,
+            f"({point_2[0]:.2f}, {point_2[1]:.2f})",
+            fontsize=self._DEFAULT_FONT_SIZE,
+            color=self._DEFAULT_FONT_COLOR
+        )
+        return np.array(point_2)
+
+    def _plot_coverage(self, ax: plt.Axes, pivot_point: np.ndarray, upper_bound_point: np.ndarray, lower_bound_point: np.ndarray) -> List[np.ndarray]:
+        """
+        Plot coverage.
+        Args:
+            ax (plt.Axes): Matplotlib axes.
+            pivot_point (np.ndarray): Pivot point.
+            upper_bound_point (np.ndarray): Upper bound point.
+            lower_bound_point (np.ndarray): Lower bound point.
+        Returns:
+            List[np.ndarray]: List containing polygon vertices.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Plotting coverage.")
+        xmin, xmax = ax.get_xlim()
+        ymin, ymax = ax.get_ylim()
+        # Get extreme points and translate them to the pivot point
+        extreme_points = [
+            np.array([xmin, ymin]),
+            np.array([xmax, ymin]),
+            np.array([xmax, ymax]),
+            np.array([xmin, ymax])
+        ]
+        # Translate the upper and lower bound points to the pivot point
+        u_theta, _ = self._get_angle_and_unit_vector(pivot_point, upper_bound_point)
+        l_theta, _ = self._get_angle_and_unit_vector(pivot_point, lower_bound_point)
+        # Store original points in the polygon
+        polygon_vertex = [pivot_point, lower_bound_point]
+        for point in extreme_points:
+            theta, _ = self._get_angle_and_unit_vector(pivot_point, point)
+            if (
+                np.sign(u_theta) == np.sign(l_theta)
+                or (np.sign(l_theta) == -1 and np.sign(u_theta) == 1)
+                ) and l_theta <= theta <= u_theta:
+                polygon_vertex.append(point)
+            elif np.sign(l_theta) == 1 and np.sign(u_theta) == -1:
+                theta_dash = theta % (2 * np.pi) if theta < 0 else theta
+                u_theta_dash = u_theta % (2 * np.pi)
+                if l_theta <= theta_dash <= u_theta_dash:
+                    polygon_vertex.append(point)
+        polygon_vertex.append(upper_bound_point)
+        polygon = Polygon(polygon_vertex, edgecolor=self._AV_CAMERA_COVERAGE_COLOR, facecolor=self._AV_CAMERA_COVERAGE_COLOR, alpha=self._AV_CAMERA_COVERAGE_ALPHA)
+        ax.add_patch(polygon)
+        return polygon_vertex
 
     def _cast_rays(self, ax: plt.Axes, actor_heading: float, sensor_list: List[Union[InternalCameraMountResponse]]) -> None:
         """
@@ -311,13 +380,18 @@ class AV2Forecasting(AV2Base):
         logger.info(f"{self.__LOG_PREFIX__}: Casting rays from sensors.")
         for sensor in sensor_list:
             if sensor.type == CAMERA_TYPE_NAME:
+                # Get sensor properties
                 fov = sensor.camera.get_fov_radians()
                 cp = sensor.get_mid_bounds()
                 yaw, _, _ = sensor.camera.rotation.get_rotation_radians()
+                # Set upper and lower angular bounds
                 upper_fov_bound = actor_heading + yaw + (fov / 2)
                 lower_fov_bound = actor_heading + yaw - (fov / 2)
+                # Get coverage bounds
                 upper_coverage_bound_point = self._get_line_from_point_and_angle(ax, cp, upper_fov_bound)
                 lower_coverage_bound_point = self._get_line_from_point_and_angle(ax, cp, lower_fov_bound)
+                # Plot coverage
+                coverage_polygon = self._plot_coverage(ax, cp, upper_coverage_bound_point, lower_coverage_bound_point)
 
     def _plot_occlusion_map(self, ax: plt.Axes, actor_bbox: np.ndarray, actor_position: np.ndarray, actor_heading: np.ndarray) -> None:
         """
@@ -404,7 +478,7 @@ class AV2Forecasting(AV2Base):
         logger.info(f"{self.__LOG_PREFIX__}: Generating detailed scenario video for scenario id: {self.scenario_id}")
         frames: List[Image.Image] = []
         for timestep in range(self._OBSERVATION_DURATION_TIMESTEPS + self._PREDICTION_DURATION_TIMESTEPS):
-        # for timestep in range(3):
+        # for timestep in range(90, 91):
             # Plot
             _, ax = plt.subplots()
             self._visualize_map(
