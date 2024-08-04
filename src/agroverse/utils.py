@@ -84,7 +84,7 @@ def av2_plot_polygons(polygons: Sequence[NDArrayFloat], alpha: float = 1.0, colo
         plt.fill(polygon[:, 0], polygon[:, 1], alpha=alpha, color=color)
 
 
-def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: float, color: str, bbox_size: Tuple[float, float], rotation_point: str = "xy", zorder: float = np.inf) -> np.ndarray:
+def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: float, bbox_size: Tuple[float, float], color: str = 'b', rotation_point: str = "xy", zorder: float = np.inf, add_patch: bool = True) -> np.ndarray:
     """
     Plot bounding box representing the player.
     Args:
@@ -95,6 +95,7 @@ def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: floa
         bbox_size (Type[float, float]): Size of the bounding box - length and width.
         rotation_point (str, optional): Rotation point of the bounding box. Defaults to "xy".
         zorder (float, optional): Z-order of the bounding box. Defaults to np.inf.
+        add_patch (bool, optional): Add patch to the axes. Defaults to True.
     Returns:
         np.ndarray: Corners of the bounding box.
     """
@@ -108,5 +109,6 @@ def av2_plot_bbox(ax: plt.Axes, pivot_points: Tuple[float, float], heading: floa
         rotation_point=rotation_point,
         zorder=zorder
     )
-    ax.add_patch(player_bbox)
+    if add_patch:
+        ax.add_patch(player_bbox)
     return player_bbox.get_corners()

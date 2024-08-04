@@ -15,5 +15,6 @@ PyYAML
 python-dotenv
 matplotlib
 pillow
+shapely
 opencv-python
 carla~=0.9.15; platform_system == "Linux"

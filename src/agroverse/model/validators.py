@@ -4,9 +4,34 @@
 
 import numpy as np
 from typing import Optional, List
+from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
+from pydantic.functional_validators import AfterValidator
 from src.agroverse.constants import CAMERA_TYPE_NAME
 
+def validate_sensor_location(location: "Location") -> "Location":
+    """
+    Validate the location of the sensor.
+    Args:
+        location (Location): Location of the sensor.
+    Returns:
+        Location: Location of the sensor.
+    """
+    assert 0 <= location.x <= 1, "Location x should be between 0 and 1."
+    assert 0 <= location.y <= 1, "Location y should be between 0 and 1."
+    assert 0 <= location.z <= 1, "Location z should be between 0 and 1."
+    return location
+
+def validate_camera_fov(fov: float) -> float:
+    """
+    Validate the field of view of the camera.
+    Args:
+        fov (float): Field of view of the camera.
+    Returns:
+        float: Field of view of the camera.
+    """
+    assert 0 <= fov <= 180, "Field of view should be between 0 and 180."
+    return fov
 
 class Location(BaseModel):
 
@@ -42,7 +67,7 @@ class _BaseSensor(BaseModel):
     Define the base sensor model for agroverse here.
     """
     rotation: Rotation
-    location: Location
+    location: Annotated[Location, AfterValidator(validate_sensor_location)]
 
 
 class CameraSensor(_BaseSensor):
@@ -50,7 +75,7 @@ class CameraSensor(_BaseSensor):
     """
     Define the camera sensor model for agroverse here.
     """
-    fov: Optional[float] = 60.0
+    fov: Optional[Annotated[float, AfterValidator(validate_camera_fov)]] = 60.0
     image_size_x: Optional[int] = 800
     image_size_y: Optional[int] = 600
 
