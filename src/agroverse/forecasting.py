@@ -547,6 +547,8 @@ class AV2Forecasting(AV2Base):
                 elif isinstance(intersection, ShapelyPoint):
                     intersection_point = np.array([intersection.x, intersection.y])
                     intersection_point = intersection_point[None, :]
+                if len(intersection_point.shape) == 1:
+                    intersection_point = intersection_point[None, :]
                 if intersection_point.shape[0] > 1:
                     # Get the closest intersection point to the pivot point
                     intersection_point = intersection_point[np.argmin(np.linalg.norm(intersection_point - pivot_point, axis=1))]
