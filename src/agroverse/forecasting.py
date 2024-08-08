@@ -9,13 +9,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from pathlib import Path
+from shapely import set_precision
 from matplotlib.patches import Polygon
 from typing import Tuple, Union, List, Dict
 from av2.map.map_api import ArgoverseStaticMap
 from shapely.geometry import Point as ShapelyPoint
-from shapely import LineString as ShapelyLineString
 from shapely.geometry.polygon import Polygon as ShapelyPolygon
+from shapely import unary_union, LineString as ShapelyLineString
 from av2.datasets.motion_forecasting import scenario_serialization
+from shapely.geometry.multipoint import MultiPoint as ShapelyMultiPoint
+from shapely.geometry.multilinestring import MultiLineString as ShapelyMultiLineString
 from av2.datasets.motion_forecasting.data_schema import Track, TrackCategory, ObjectType
 from av2.datasets.motion_forecasting.viz.scenario_visualization import visualize_scenario
 from src.agroverse.base import AV2Base
@@ -72,6 +75,10 @@ class AV2Forecasting(AV2Base):
     _DEFAULT_FONT_COLOR = "black"
     _DEFAULT_FONT_X_OFFSET = 0.25
     _DEFAULT_FONT_Y_OFFSET = 0.25
+    _DEFAULT_SHAPELY_PRECISION = 1e-6
+    _OCCLUDED_BOUNDARY_EDGE_COLOR = "#000000"
+    _OCCLUDED_BOUNDARY_FACE_COLOR = "#000000"
+    _OCCLUDED_BOUNDARY_ALPHA = 0.25
     # AV - Autonomous Vehicle
     _AV_ID = "AV"
     _AV_COLOR = _AV_PATH_COLOR = "#FF0000"
@@ -87,7 +94,7 @@ class AV2Forecasting(AV2Base):
         """
         Initialize Agroverse Forecasting dataset instance.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Initializing Agroverse Forecasting dataset instance.")
+        logger.info(f"{self.__LOG_PREFIX__}: Initializing Agroverse Forecasting - av2 - dataset instance.")
         self.input_directory = kwargs.get("input_directory", None)
         assert self.input_directory is not None, "Input directory not provided."
         self.output_directory = kwargs.get("output_directory", None)
@@ -236,13 +243,13 @@ class AV2Forecasting(AV2Base):
         Returns:
             Tuple[float, np.ndarray]: Tuple containing normalized angle (in radians) and unit vector.
         """
-        logger.debug(f"{self.__LOG_PREFIX__}: Getting angle and unit vector.")
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting angle and unit vector given two points.")
         delta = point2 - point1
         theta = np.arctan2(delta[1], delta[0])
         x_hat, y_hat = np.cos(theta), np.sin(theta)
         return (theta, np.array([x_hat, y_hat]))
     
-    def _get_line_from_point_and_angle(self, ax: plt.Axes, point: np.ndarray, theta: float) -> Tuple[np.ndarray, np.ndarray]:
+    def _get_line_from_point_and_angle(self, ax: plt.Axes, point: np.ndarray, theta: float) -> np.ndarray:
         """
         Given a point and a reference angle, get a line passing through this point keeping direction in mind.
         Extrimities of the line are the limits of the plot.
@@ -255,7 +262,7 @@ class AV2Forecasting(AV2Base):
             point (np.ndarray): Point - shape (2,).
             theta (float): Angle in radians.
         Returns:
-            Tuple[np.ndarray, np.ndarray]: Tuple containing line points.
+            np.ndarray: Point - the other end of the line.
         """
         def _get_vertical_intersction(x: float) -> np.ndarray:
             """
@@ -283,7 +290,7 @@ class AV2Forecasting(AV2Base):
             x_new = point[0].item() + t * np.cos(theta)
             return np.array([x_new, y])
         
-        logger.debug(f"{self.__LOG_PREFIX__}: Getting line from point and angle.")
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting line from a given point and angle.")
         xmin, xmax = ax.get_xlim()
         ymin, ymax = ax.get_ylim()
         x_hat, y_hat = np.cos(theta), np.sin(theta)
@@ -487,9 +494,9 @@ class AV2Forecasting(AV2Base):
             extrimities[actor] = idx # Item containing indices of extrimities - (idx1, idx2)
         return extrimities
     
-    def _get_occluded_region(self, coverage_polygon: ShapelyPolygon, pivot_point: np.ndarray, actors: Dict[ShapelyPolygon, np.ndarray], extrimities: Dict[ShapelyPolygon, Tuple[int, int]]) -> Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]:
+    def _get_visibility_region(self, coverage_polygon: ShapelyPolygon, pivot_point: np.ndarray, actors: Dict[ShapelyPolygon, np.ndarray], extrimities: Dict[ShapelyPolygon, Tuple[int, int]]) -> Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]:
         """
-        Get occluded region for the sensor.
+        Get visibility region for the sensor.
         
         To solve this we follow the below steps:
         1. For all extreme points of the actors, compute the Hausdorf distance form this point to the polygon bounds.
@@ -536,22 +543,30 @@ class AV2Forecasting(AV2Base):
                     np.array([point.x, point.y]) + u_vec * hausdorf_distance
                 ]
             )
-            intersection = extended_line.intersection(coverage_polygon)
-            intersection_point = pivot_point
+            intersection = set_precision(extended_line, self._DEFAULT_SHAPELY_PRECISION).intersection(set_precision(coverage_polygon, self._DEFAULT_SHAPELY_PRECISION))
+            intersection_point = None
             if intersection.is_empty:
                 logger.warning(f"{self.__LOG_PREFIX__}: No intersection found for the line-polygon. Actor found in the environment but was unable to compute the intersection.")
             else:
-                if isinstance(intersection, ShapelyLineString):
-                    # First point is the pivot point and we should skip this
-                    intersection_point = np.array(intersection.xy).T[1:, :]
-                elif isinstance(intersection, ShapelyPoint):
-                    intersection_point = np.array([intersection.x, intersection.y])
-                    intersection_point = intersection_point[None, :]
-                if len(intersection_point.shape) == 1:
-                    intersection_point = intersection_point[None, :]
-                if intersection_point.shape[0] > 1:
-                    # Get the closest intersection point to the pivot point
-                    intersection_point = intersection_point[np.argmin(np.linalg.norm(intersection_point - pivot_point, axis=1))]
+                if isinstance(intersection, ShapelyMultiPoint) or isinstance(intersection, ShapelyMultiLineString):
+                    intersection_point = np.array([
+                        geom.coords for geom in intersection.geoms
+                    ]).reshape(-1, 2) # (n, 1, 2) -> (n, 2) because on shapely convention
+                else:
+                    intersection_point = np.array(intersection.coords) # (n, 2)
+                intersection_point_distance = np.linalg.norm(intersection_point - pivot_point, axis=1)
+                intersection_point = intersection_point[~(np.isclose(intersection_point_distance, 0))]
+                if intersection_point.size == 0:
+                    intersection_point = None
+                else:
+                    if len(intersection_point.shape) == 1:
+                        intersection_point = intersection_point[None, :]
+                    if intersection_point.shape[0] > 1:
+                        # Get the closest intersection point to the pivot point
+                        intersection_point = intersection_point[np.argmax(np.linalg.norm(intersection_point - pivot_point, axis=1))]
+            if intersection_point is None:
+                logger.warning(f"{self.__LOG_PREFIX__}: Intersection point is None. Setting it to the reference point.")
+                intersection_point = np.array(point.coords)
             return np.squeeze(intersection_point)
         
         def _get_actor_bbox_contribution(bbox: np.ndarray, extrimities_idx: Tuple[int, int]) -> List[np.ndarray]:
@@ -573,7 +588,7 @@ class AV2Forecasting(AV2Base):
                 intersection = list(np.array(intersection.coords)) 
             return intersection
             
-        logger.info(f"{self.__LOG_PREFIX__}: Getting occluded region for the sensor.")
+        logger.info(f"{self.__LOG_PREFIX__}: Getting visibility region for the sensor.")
         visibility_dict = {}
         for actor, bbox in actors.items():
             p1, p2 = bbox[extrimities[actor], :].tolist()
@@ -586,7 +601,7 @@ class AV2Forecasting(AV2Base):
             lower_bound_intersection = _get_line_polygon_intersection(lower_bound)
             upper_bound_intersection = _get_line_polygon_intersection(upper_bound)
             coverage_polygon_bounds = np.array(coverage_polygon.exterior.coords)[:-1, :] # Last point is the same as the first point
-            included_bounds = self._get_polygon_bounds_between_angle(coverage_polygon_bounds, pivot_point, upper_bound_intersection, lower_bound_intersection)
+            included_bounds = self._get_polygon_bounds_between_angle(coverage_polygon_bounds, np.mean(bbox, axis=0), upper_bound_intersection, lower_bound_intersection)
             actor_bbox_boundary = _get_actor_bbox_contribution(bbox, extrimities[actor])
             occluded_polygon = self._arrange_polygon_bounds(
                 [lower_bound_intersection, upper_bound_intersection] \
@@ -598,36 +613,49 @@ class AV2Forecasting(AV2Base):
             )
             visibility_dict[actor] = (occluded_polygon, visible_polygon)
         return visibility_dict
+    
+    def _get_consolidated_occluded_region(self, visibility_dict: Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]) -> List[ShapelyPolygon]:
+        """
+        Given the visibility information, consolidate the occluded region.
+        Args:
+            visibility_dict (Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]): Dictionary containing the actor and its corresponding occluded and visible regions when viewed from the sensor.
+        Returns:
+            List[ShapelyPolygon]: List containing the consolidated occluded region.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Getting consolidated occluded region.")
+        occluded_region = []
+        for _, (occluded_polygon, _) in visibility_dict.items():
+            occluded_region.append(ShapelyPolygon(occluded_polygon))
+        consolidated_occluded_region = unary_union(occluded_region)
+        if consolidated_occluded_region.is_empty:
+            return []
+        if isinstance(consolidated_occluded_region, ShapelyPolygon):
+            return [consolidated_occluded_region]
+        return list(consolidated_occluded_region.geoms)
 
-    def _get_visible_region(self, ax: plt.Axes, pivot_point: np.ndarray, sensor_upper_bound_point: np.ndarray, sensor_lower_bound_point: np.ndarray, sensor_coverage: np.ndarray, timestep: int) -> None:
+    def _get_occluded_region(self, pivot_point: np.ndarray, sensor_coverage: np.ndarray, timestep: int) -> List[ShapelyPolygon]:
         """
         Plot visible region for the sensor - occlusion considered.
         Args:
-            ax (plt.Axes): Matplotlib axes.
             pivot_point (np.ndarray): Pivot point.
-            sensor_upper_bound_point (np.ndarray): Upper bound point.
-            sensor_lower_bound_point (np.ndarray): Lower bound point.
             sensor_coverage (np.ndarray): Sensor coverage - a polygon.
             timestep (int): Timestep.
+        Returns:
+            List[ShapelyPolygon]: List containing the occluded region.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Plotting visible region for the sensor.")
+        logger.info(f"{self.__LOG_PREFIX__}: Getting occluded region for the sensor.")
         sensor_coverage_polygon = ShapelyPolygon(sensor_coverage)
         # Get all actors in the sensor coverage
         actors = self._get_actors_in_sensor_coverage(sensor_coverage_polygon, timestep)
         # Get actors extrimities between and beyond which the sensor cannot see
         actors_extrimities = self._get_actors_extrimities(pivot_point, actors)
         # Using the above information identify the occluded region and plot/consider visible region
-        visibility_dict = self._get_occluded_region(sensor_coverage_polygon, pivot_point, actors, actors_extrimities)
-        # for actor, extrimity in actors_extrimities.items():
-        #     for point in extrimity:
-        #         plt.plot(
-        #             [pivot_point[0], point[0]],
-        #             [pivot_point[1], point[1]],
-        #             color="black",
-        #             linewidth=0.35,
-        #         )
+        visibility_dict = self._get_visibility_region(sensor_coverage_polygon, pivot_point, actors, actors_extrimities)
+        # Put all the information together
+        occluded_polygons = self._get_consolidated_occluded_region(visibility_dict)
+        return occluded_polygons
             
-    def _plot_coverage(self, ax: plt.Axes, pivot_point: np.ndarray, upper_bound_point: np.ndarray, lower_bound_point: np.ndarray, timestep: int) -> List[np.ndarray]:
+    def _plot_coverage(self, ax: plt.Axes, pivot_point: np.ndarray, upper_bound_point: np.ndarray, lower_bound_point: np.ndarray, timestep: int) -> Tuple[List[np.ndarray], List[ShapelyPolygon]]:
         """
         Plot coverage.
         Args:
@@ -637,13 +665,16 @@ class AV2Forecasting(AV2Base):
             lower_bound_point (np.ndarray): Lower bound point.
             timestep (int): Timestep.
         Returns:
-            List[np.ndarray]: List containing polygon vertices.
+            Tuple[List[np.ndarray], List[ShapelyPolygon]]: List containing polygon vertices representing sensor coverage and occluded region.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Plotting coverage.")
         polygon_vertices = self._get_sensor_coverage(ax, pivot_point, upper_bound_point, lower_bound_point)
-        visible_region_polygon = self._get_visible_region(ax, pivot_point, upper_bound_point, lower_bound_point, polygon_vertices, timestep)
         polygon = Polygon(polygon_vertices, edgecolor=self._AV_CAMERA_COVERAGE_COLOR, facecolor=self._AV_CAMERA_COVERAGE_COLOR, alpha=self._AV_CAMERA_COVERAGE_ALPHA)
         ax.add_patch(polygon)
+        occluded_region_polygons = self._get_occluded_region(pivot_point, polygon_vertices, timestep)
+        for occluded_region_polygon in occluded_region_polygons:
+            polygon = Polygon(np.array(occluded_region_polygon.exterior.coords), edgecolor=self._OCCLUDED_BOUNDARY_EDGE_COLOR, facecolor=self._OCCLUDED_BOUNDARY_FACE_COLOR, alpha=self._OCCLUDED_BOUNDARY_ALPHA)
+            ax.add_patch(polygon)
         return polygon_vertices
 
     def _cast_rays(self, ax: plt.Axes, actor_heading: float, sensor_list: List[Union[InternalCameraMountResponse]], timestep: int) -> None:
@@ -670,7 +701,7 @@ class AV2Forecasting(AV2Base):
                 lower_coverage_bound_point = self._get_line_from_point_and_angle(ax, cp, lower_fov_bound)
                 upper_coverage_bound_point = self._get_line_from_point_and_angle(ax, cp, upper_fov_bound)
                 # Plot coverage
-                coverage_polygon = self._plot_coverage(ax, cp, upper_coverage_bound_point, lower_coverage_bound_point, timestep)
+                _ = self._plot_coverage(ax, cp, upper_coverage_bound_point, lower_coverage_bound_point, timestep)
 
     def _plot_occlusion_map(self, ax: plt.Axes, actor_bbox: np.ndarray, actor_heading: np.ndarray, timestep: int) -> None:
         """
