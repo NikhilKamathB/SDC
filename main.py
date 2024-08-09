@@ -295,10 +295,14 @@ def visualize_agroverse_forecasting_data(
         "0000b0f9-99f9-4a1f-a231-5be9e4c523f7", help="The scenario id for the Agroverse forecasting data instance."),
     output_filename: Optional[str] = T.Option(
         None, help="The name of the output file."),
+    vechile_config_path: Optional[str] = T.Option(
+        "./data/config/agroverse/vehicle0.yaml", help="The configuration file for the autonomoous vehicle."),
     raw: Optional[bool] = T.Option(
         True, help="Whether to visualize the data raw or not - using the av2 apis."),
     show_pedestrian_xing: Optional[bool] = T.Option(
         False, help="Whether to show pedestrian crossing or not."),
+    plot_occlusions: Optional[bool] = T.Option(
+        True, help="Whether to plot occlusions or not."),
     codec: Optional[str] = T.Option(
         "mp4v", help="The codec for the video."),
     fps: Optional[int] = T.Option(
@@ -314,8 +318,10 @@ def visualize_agroverse_forecasting_data(
             output_directory=output_directory,
             scenario_id=scenario_id,
             output_filename=output_filename,
+            av_configuration_path=vechile_config_path,
             raw=raw,
             show_pedestrian_xing=show_pedestrian_xing,
+            plot_occlusions=plot_occlusions,
             codec=codec,
             fps=fps
         )
