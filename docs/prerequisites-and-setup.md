@@ -21,34 +21,39 @@ Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/)
 ## 🧰 Setup 1
 
 * Have accounts setup in GitHub and GitLab to access all modules required.
-* Make sure you have Iinstalled Nvidia Drivers
+* If you intend to have the Carla Simulator setup,  you will need the following:
+  * Make sure you have Iinstalled Nvidia Drivers
+  * For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+  * <pre><code><strong>docker pull carlasim/carla:&#x3C;tag>      # eg: carlasim/carla:0.9.15 
+    </strong>
+    docker run --rm -it -d --privileged --gpus all --net=host --name carla-server carlasim/carla:&#x3C;tag> /bin/bash ./CarlaUE4.sh -RenderOffScreen
+    </code></pre>
 * Install `C++` compiler
 * Install `CMake`
 * Have a python environment created and activate it.&#x20;
-* For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-
-```
-docker pull carlasim/carla:<tag>      # eg: carlasim/carla:0.9.15 
-
-docker run --rm -it -d --privileged --gpus all --net=host --name carla-server carlasim/carla:<tag> /bin/bash ./CarlaUE4.sh -RenderOffScreen
-```
-
 * In this project we will be making use of Argoverse datasets and their utilities. Refer the [Agroverse guide](https://argoverse.github.io/user-guide/argoverse\_2.html) for a deeper dive. As per their instructions ([downloading the ave package](https://argoverse.github.io/user-guide/getting\_started.html#installing-via-pip)), we will be install Rust. You may install Rust from [here](https://www.rust-lang.org/tools/install). Once you have installed Rust, switch to the nightly build of Rust as per the [Agroverse installation guide](https://argoverse.github.io/user-guide/getting\_started.html#installing-via-pip) by running `rustup default nightly`.&#x20;
 
 ## 💼 Setup 2
 
-This step ought to be executed using the `./setup.sh` script that can be found at the root of the parent directory. The bash script does the following:
+This step has to be executed using the `./setup.sh` script that can be found at the root of the parent directory. The bash script does the following:
 
-1. Updates the DVC components
-2. Installs required Python packages
-3. Installs the Argoverse dependencies
-4. Updates the git submodules
-5. Builds the \`[Algorithms](https://github.com/NikhilKamathB/Algorithms)\` library
+1. Clearing logs
+2. Updates the DVC components
+3. Installs required Python packages
+4. Installs the Argoverse dependencies
+5. Updates the git submodules
+6. Builds the \`[Algorithms](https://github.com/NikhilKamathB/Algorithms)\` library
 
-* For this to work you have to set the following environemnt variables:
-  * `DVC_DATA_PATH=<PATH_TO_DVC_LOCAL_STORAGE>         # Section 1`
-  * `INSTALL_SIMPAN_DEPENDENCIES=<BOOL>        # whether to install dependencies associated with "SimPan" project or not - Section 2`
-  * `AV2_DIRECTORY=<PATH_TO_STORE_AGROVERSE_PROJECT>        # Section 3`
+* For this to work you have to set the following environment variables:
+
+```
+CLEAR_LOGS=<BOOL>        # enable clearing longs
+UPDATE_DVC_CONFIG=<BOOL>        # enable dvc update
+DVC_DATA_PATH=<PATH_TO_DVC_LOCAL_STORAGE>         # Section 2
+INSTALL_SIMPAN_DEPENDENCIES=<BOOL>        # whether to install dependencies associated with "SimPan" project or not - Section 3
+AV2_DIRECTORY=<PATH_TO_STORE_AGROVERSE_PROJECT>        # Section 4
+```
+
 * Note - You may skip the dedicated sections in the bash script by not providing the corresponding environment variables.
 * With your environment activated, run
 
@@ -79,8 +84,10 @@ docker run --rm -it -d --privileged --gpus all --net=host --name carla-server -e
 ```
 export HOSTNAME="localhost"
 export PORT="2000"
+export CLEAR_LOGS=<BOOL>
+export UPDATE_DVC_CONFIG=<BOOL>
 export DVC_DATA_PATH="<PATH_TO_DVC_LOCAL_STORAGE>"
-export INSTALL_SIMPAN_DEPENDENCIES=true
+export INSTALL_SIMPAN_DEPENDENCIES=<BOOL>
 export AV2_DIRECTORY="<PATH_TO_STORE_AGROVERSE_PROJECT>"
 ```
 
@@ -97,6 +104,7 @@ SDC Repo.
     |- processed (holds processed information)
 |- logs (logging of information will be done here; logging must be in the following format `log_<timestamp>.<extension>`)
 |- src (driving code goes)
+    |- agroverse (contains agroverse specefic code)
     |- base (holds the definition of handlers like actors, ego vehivles, maps, etc)
     |- model (contains pydantic and enums models that define attributes for the enviroment)
     |- uitls (untilities are defined here)

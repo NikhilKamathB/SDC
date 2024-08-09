@@ -66,3 +66,23 @@ python -m main generate_route --help.   # To get information about this CLI
 
 python -m main generate_route [OPTIONS]    # To run the code
 ```
+
+## Agroverse - Motion Forecasting
+
+* The AV2 motion forecasting dataset can be found [here](https://www.argoverse.org/av2.html#forecasting-link). You can run the following code to get to know more about the av2 motion forcasting CLI.
+
+```
+python -m main visualize_agroverse_data --help
+```
+
+* To use the default av2 visualizaition provided run
+
+```
+python -m main visualize_agroverse_data
+```
+
+* You can plot a detailed version of the scenario using
+
+```
+python -m main visualize_agroverse_data --no-raw --show-pedestrian-xing --scenario-id <SCENARIO_ID>
+```
