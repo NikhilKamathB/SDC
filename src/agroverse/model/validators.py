@@ -3,10 +3,11 @@
 ##########################################################################################################
 
 import numpy as np
-from typing import Optional, List
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List, Union, Dict, Tuple
 from pydantic.functional_validators import AfterValidator
+from shapely.geometry.polygon import Polygon as ShapelyPolygon
 from src.agroverse.constants import CAMERA_TYPE_NAME
 
 def validate_sensor_location(location: "Location") -> "Location":
@@ -140,3 +141,16 @@ class InternalCameraMountResponse(InternalSensorMountResponse):
 
     type: str = Field(CAMERA_TYPE_NAME, literal=True)
     camera: CameraSensor
+
+
+class SensorInformation(BaseModel):
+
+    """
+    Define the sensor information model for agroverse here.
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    sensor: Union[InternalSensorMountResponse]
+    actors: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = {}
+    sensor_coverage: Optional[np.ndarray] = np.array([])
+    occluded_regions: Optional[List[np.ndarray]] = []

@@ -25,7 +25,7 @@ from src.agroverse.base import AV2Base
 from src.agroverse.constants import CAMERA_TYPE_NAME
 from src.agroverse.utils import av2_plot_polylines, av2_plot_bbox
 from src.utils.utils import write_video, read_yaml_file, bilinear_interpolate
-from src.agroverse.model.validators import InternalCameraMountResponse, Vehicle as AV2Vehicle
+from src.agroverse.model.validators import InternalCameraMountResponse, SensorInformation, Vehicle as AV2Vehicle
 
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class AV2Forecasting(AV2Base):
     }
     # Default configurations
     _DEFAULT_ACTOR_PATH_ALPHA = 1.0
-    _DRIVABLE_AREA_ALPHA = _LANE_SEGMENT_ALPHA = _PED_XING_ALPHA = 0.5
+    _DRIVABLE_AREA_ALPHA = _LANE_SEGMENT_ALPHA = _PED_XING_ALPHA = _DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_ALPHA = 0.5
     _DEFAULT_ACTOR_STYLE = "o"
     _LANE_SEGMENT_STYLE = _PED_XING_STYLE = _DEFAULT_ACTOR_PATH_STYLE = "-"
     _LANE_SEGMENT_LINEWIDTH = _PED_XING_LINEWIDTH = _DEFAULT_ACTOR_PATH_LINEWIDTH = 1.0
@@ -65,19 +65,20 @@ class AV2Forecasting(AV2Base):
     _LANE_SEGMENT_COLOR = "#E0E0E0"
     _PED_XING_COLOR = "#FF00FF"
     _DEFAULT_ACTOR_COLOR = "#D3E8EF"
+    _DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_COLOR = "#00AA00"
+    _DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S = 25
     _TRACK_COLORS = {
         TrackCategory.TRACK_FRAGMENT: "#FFEE00",
         TrackCategory.UNSCORED_TRACK: "#00FFFF",
         TrackCategory.SCORED_TRACK: "#00FF00",
         TrackCategory.FOCAL_TRACK: "#FF9900",
     }
+    _OCCLUDED_TRACK_COLOR = _OCCLUDED_BOUNDARY_EDGE_COLOR = _OCCLUDED_BOUNDARY_FACE_COLOR = "#000000"
     _DEFAULT_FONT_SIZE = 5
-    _DEFAULT_FONT_COLOR = "black"
+    _DEFAULT_FONT_COLOR = "#000000"
     _DEFAULT_FONT_X_OFFSET = 0.25
     _DEFAULT_FONT_Y_OFFSET = 0.25
-    _DEFAULT_SHAPELY_PRECISION = 1e-6
-    _OCCLUDED_BOUNDARY_EDGE_COLOR = "#000000"
-    _OCCLUDED_BOUNDARY_FACE_COLOR = "#000000"
+    _DEFAULT_SHAPELY_PRECISION = _DEFAULT_GRID_SIZE = 1e-6
     _OCCLUDED_BOUNDARY_ALPHA = 0.25
     # AV - Autonomous Vehicle
     _AV_ID = "AV"
@@ -421,7 +422,7 @@ class AV2Forecasting(AV2Base):
         )
         return np.array(polygon_vertex)
 
-    def _get_actors_in_sensor_coverage(self, sensor_coverage: ShapelyPolygon, timestep: int) -> Dict[ShapelyPolygon, np.ndarray]:
+    def _get_actors_in_sensor_coverage(self, sensor_coverage: ShapelyPolygon, timestep: int) -> Tuple[Dict[ShapelyPolygon, np.ndarray], List[str]]:
         """
         Get actors in the sensor coverage.
         Args:
@@ -430,10 +431,11 @@ class AV2Forecasting(AV2Base):
             lower_bound_point (np.ndarray): Lower bound point.
             timestep (int): Timestep.
         Returns:
-            Dict[ShapelyPolygon, np.ndarray]: Dictionary containing actors in the sensor coverage.
+            Tuple[Dict[ShapelyPolygon, np.ndarray], List[str]]: Dictionary containing actors in the sensor coverage and list of actor ids.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting actors in the sensor coverage.")
         actors = dict()
+        actor_ids = []
         for track in self.scenario.tracks:
             actor_positions, actor_headings, _ = self._get_actor_states(track, timestep)
             if actor_positions.shape[0] == 0 or actor_headings.shape[0] == 0:
@@ -460,12 +462,13 @@ class AV2Forecasting(AV2Base):
             )
             # Check if the actor is within the sensor coverage
             bbox_polygon = ShapelyPolygon(bbox_bounds)
-            intersections = sensor_coverage.intersection(bbox_polygon)
-            if intersections.is_empty:
+            intersection = sensor_coverage.intersection(bbox_polygon)
+            if intersection.is_empty:
                 continue
             else:
-                actors[bbox_polygon] = np.array([point for point in intersections.exterior.coords])
-        return actors
+                actors[bbox_polygon] = np.array([point for point in intersection.exterior.coords])
+                actor_ids.append(track.track_id)
+        return actors, actor_ids
     
     def _get_actors_extrimities(self, pivot_point: np.ndarray, actors: Dict[ShapelyPolygon, np.ndarray]) -> Dict[ShapelyPolygon, Tuple[int, int]]:
         """
@@ -581,12 +584,12 @@ class AV2Forecasting(AV2Base):
             logger.debug(f"{self.__LOG_PREFIX__}: Getting actor bbox contribution for the occluded region.")
             actor_polygon = ShapelyPolygon(bbox.tolist())
             visible_polygon = ShapelyPolygon(bbox[extrimities_idx, :].tolist() + [pivot_point.tolist()])
-            intersection = actor_polygon.intersection(visible_polygon)
-            if isinstance(intersection, ShapelyPolygon):
-                intersection = list(np.array(intersection.exterior.coords)[:-1, :]) # Last point is the same as the first point
+            difference = actor_polygon.difference(visible_polygon, grid_size=self._DEFAULT_GRID_SIZE)
+            if isinstance(difference, ShapelyPolygon):
+                difference = list(np.array(difference.exterior.coords)[:-1, :]) # Last point is the same as the first point
             else:
-                intersection = list(np.array(intersection.coords)) 
-            return intersection
+                difference = list(np.array(difference.coords)) 
+            return difference
             
         logger.info(f"{self.__LOG_PREFIX__}: Getting visibility region for the sensor.")
         visibility_dict = {}
@@ -641,21 +644,21 @@ class AV2Forecasting(AV2Base):
             sensor_coverage (np.ndarray): Sensor coverage - a polygon.
             timestep (int): Timestep.
         Returns:
-            List[ShapelyPolygon]: List containing the occluded region.
+            Tuple[Dict[ShapelyPolygon, np.ndarray], List[ShapelyPolygon], List[str]]: Tuple containing actors, occluded region polygons and actor ids.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting occluded region for the sensor.")
         sensor_coverage_polygon = ShapelyPolygon(sensor_coverage)
         # Get all actors in the sensor coverage
-        actors = self._get_actors_in_sensor_coverage(sensor_coverage_polygon, timestep)
+        actors, actor_ids = self._get_actors_in_sensor_coverage(sensor_coverage_polygon, timestep)
         # Get actors extrimities between and beyond which the sensor cannot see
         actors_extrimities = self._get_actors_extrimities(pivot_point, actors)
         # Using the above information identify the occluded region and plot/consider visible region
         visibility_dict = self._get_visibility_region(sensor_coverage_polygon, pivot_point, actors, actors_extrimities)
         # Put all the information together
         occluded_polygons = self._get_consolidated_occluded_region(visibility_dict)
-        return occluded_polygons
+        return actors, occluded_polygons, actor_ids
             
-    def _plot_coverage(self, ax: plt.Axes, pivot_point: np.ndarray, upper_bound_point: np.ndarray, lower_bound_point: np.ndarray, timestep: int) -> Tuple[List[np.ndarray], List[ShapelyPolygon]]:
+    def _plot_coverage(self, ax: plt.Axes, pivot_point: np.ndarray, upper_bound_point: np.ndarray, lower_bound_point: np.ndarray, timestep: int) -> Tuple[List[np.ndarray], List[ShapelyPolygon], List[str]]:
         """
         Plot coverage.
         Args:
@@ -665,19 +668,19 @@ class AV2Forecasting(AV2Base):
             lower_bound_point (np.ndarray): Lower bound point.
             timestep (int): Timestep.
         Returns:
-            Tuple[List[np.ndarray], List[ShapelyPolygon]]: List containing polygon vertices representing sensor coverage and occluded region.
+            Tuple[Dict[ShapelyPolygon, np.ndarray], List[np.ndarray], List[ShapelyPolygon], List[str]]: Tuple containing actors, sensor coverage, occluded region polygons and actor ids.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Plotting coverage.")
         polygon_vertices = self._get_sensor_coverage(ax, pivot_point, upper_bound_point, lower_bound_point)
         polygon = Polygon(polygon_vertices, edgecolor=self._AV_CAMERA_COVERAGE_COLOR, facecolor=self._AV_CAMERA_COVERAGE_COLOR, alpha=self._AV_CAMERA_COVERAGE_ALPHA)
         ax.add_patch(polygon)
-        occluded_region_polygons = self._get_occluded_region(pivot_point, polygon_vertices, timestep)
+        actors, occluded_region_polygons, actor_ids = self._get_occluded_region(pivot_point, polygon_vertices, timestep)
         for occluded_region_polygon in occluded_region_polygons:
             polygon = Polygon(np.array(occluded_region_polygon.exterior.coords), edgecolor=self._OCCLUDED_BOUNDARY_EDGE_COLOR, facecolor=self._OCCLUDED_BOUNDARY_FACE_COLOR, alpha=self._OCCLUDED_BOUNDARY_ALPHA)
             ax.add_patch(polygon)
-        return polygon_vertices
+        return actors, polygon_vertices, occluded_region_polygons, actor_ids
 
-    def _cast_rays(self, ax: plt.Axes, actor_heading: float, sensor_list: List[Union[InternalCameraMountResponse]], timestep: int) -> None:
+    def _cast_rays(self, ax: plt.Axes, actor_heading: float, sensor_list: List[Union[InternalCameraMountResponse]], timestep: int) -> List[SensorInformation]:
         """
         Cast rays from sensors.
         Args:
@@ -686,8 +689,11 @@ class AV2Forecasting(AV2Base):
             actor_heading (float): Actor heading.
             sensor_list (List[Union[InternalCameraMountResponse]]): List of sensors.
             timestep (int): Timestep.
+        Returns:
+            List[SensorInformation]: List containing sensor information.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Casting rays from sensors.")
+        sensor_information = []
         for sensor in sensor_list:
             if sensor.type == CAMERA_TYPE_NAME:
                 # Get sensor properties
@@ -701,9 +707,21 @@ class AV2Forecasting(AV2Base):
                 lower_coverage_bound_point = self._get_line_from_point_and_angle(ax, cp, lower_fov_bound)
                 upper_coverage_bound_point = self._get_line_from_point_and_angle(ax, cp, upper_fov_bound)
                 # Plot coverage
-                _ = self._plot_coverage(ax, cp, upper_coverage_bound_point, lower_coverage_bound_point, timestep)
+                actors, polygon_vertices, occluded_region_polygons, actor_ids = self._plot_coverage(ax, cp, upper_coverage_bound_point, lower_coverage_bound_point, timestep)
+                # Collect sensor information
+                sensor_information.append(
+                    SensorInformation(
+                        sensor=sensor,
+                        actors={
+                            actor_id: [np.array(actor_ply.exterior.coords), actor_bbox] for actor_id, actor_ply, actor_bbox in zip(actor_ids, actors.keys(), actors.values())
+                        },
+                        sensor_coverage=polygon_vertices,
+                        occluded_regions=[np.array(occluded_region.exterior.coords) for occluded_region in occluded_region_polygons]
+                    )
+                )
+        return sensor_information
 
-    def _plot_occlusion_map(self, ax: plt.Axes, actor_bbox: np.ndarray, actor_heading: np.ndarray, timestep: int) -> None:
+    def _plot_occlusion_map(self, ax: plt.Axes, actor_bbox: np.ndarray, actor_heading: np.ndarray, timestep: int) -> List[SensorInformation]:
         """
         Plot occlusion map.
         Args:
@@ -711,14 +729,34 @@ class AV2Forecasting(AV2Base):
             actor_bbox (Bbox): Actor bounding box coordinates.
             actor_heading (np.ndarray): Actor heading.
             timestep (int): Timestep.
+        Returns:
+            List[SensorInformation]: List containing sensor information.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Plotting occlusion map.")
         # Mount sensors
         sensor_list = self._mount_sensors(ax, actor_bbox, actor_heading)
         # Cast rays from sensors
-        self._cast_rays(ax, actor_heading, sensor_list, timestep)
+        return self._cast_rays(ax, actor_heading, sensor_list, timestep)
 
-    def _plot_actors_tracks(self, ax: plt.Axes, timestep: int) -> None:
+    def _highlight_visible_actors(self, sensor_information: List[SensorInformation] = None) -> None:
+        """
+        Highlight visible actors.
+        Args:
+            timestep (int): Timestep.
+            sensor_information (List[SensorInformation]): List containing sensor information.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Highlighting visible actors.")
+        if sensor_information is not None:
+            for sensor_info in sensor_information:
+                occluded_ply = list(map(ShapelyPolygon, sensor_info.occluded_regions))
+                combined_polygon = unary_union(occluded_ply)
+                for _, (_, actor_bbox) in sensor_info.actors.items():
+                    all_inside = all(combined_polygon.contains(ShapelyPoint(point)) for point in actor_bbox)
+                    if not all_inside:
+                        mean = np.mean(actor_bbox, axis=0)
+                        plt.scatter(mean[0], mean[1], color=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_COLOR, s=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S, alpha=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_ALPHA)
+
+    def _plot_actors(self, ax: plt.Axes, timestep: int) -> None:
         """
         Plot actor tracks.
         Args:
@@ -733,8 +771,8 @@ class AV2Forecasting(AV2Base):
             if actor_positions.shape[0] == 0 or actor_headings.shape[0] == 0:
                 continue
             # Set actor defaults and associated bbox
-            actor_path_color = self._TRACK_COLORS.get(track.category, TrackCategory.TRACK_FRAGMENT)
             actor_color = self._DEFAULT_ACTOR_COLOR
+            actor_path_color = self._TRACK_COLORS.get(track.category, TrackCategory.TRACK_FRAGMENT)
             bbox = None
             if track.track_id == self._AV_ID:
                 actor_color = self._AV_COLOR
@@ -749,6 +787,7 @@ class AV2Forecasting(AV2Base):
             if track.object_type in self._STATIC_OBJECT_TYPES:
                 continue
             # Plot actor
+            sensor_information = None
             if bbox is not None:
                 bbox_bounds = av2_plot_bbox(
                     ax=ax,
@@ -761,8 +800,8 @@ class AV2Forecasting(AV2Base):
                     color=actor_color,
                     bbox_size=bbox,
                 )
-                if self.plot_occlusions and track.track_id == self._AV_ID:
-                    self._plot_occlusion_map(ax, bbox_bounds, actor_headings[-1], timestep)
+                if track.track_id == self._AV_ID and self.plot_occlusions:
+                    sensor_information = self._plot_occlusion_map(ax, bbox_bounds, actor_headings[-1], timestep)
             else:
                 plt.plot(
                     actor_positions[-1][0],
@@ -773,6 +812,9 @@ class AV2Forecasting(AV2Base):
                 )
             # Plot actor path
             av2_plot_polylines([actor_positions], style=self._DEFAULT_ACTOR_PATH_STYLE, linewidth=self._DEFAULT_ACTOR_PATH_LINEWIDTH, alpha=self._DEFAULT_ACTOR_PATH_ALPHA, color=actor_path_color)
+        # Highlight visible actors
+        if self.plot_occlusions:
+            self._highlight_visible_actors(sensor_information)
                 
     def _generate_indetail_scenario_video(self, output_filename: str) -> str:
         """
@@ -785,7 +827,6 @@ class AV2Forecasting(AV2Base):
         logger.info(f"{self.__LOG_PREFIX__}: Generating detailed scenario video for scenario id: {self.scenario_id}")
         frames: List[Image.Image] = []
         for timestep in range(self._OBSERVATION_DURATION_TIMESTEPS + self._PREDICTION_DURATION_TIMESTEPS):
-        # for timestep in range(1):
             # Plot
             _, ax = plt.subplots()
             self._visualize_map(
@@ -801,7 +842,7 @@ class AV2Forecasting(AV2Base):
                 pedestrian_crossing_alpha=self._PED_XING_ALPHA,
                 pedestrian_crossing_color=self._PED_XING_COLOR
             )
-            self._plot_actors_tracks(ax, timestep)
+            self._plot_actors(ax, timestep)
             # Save plot
             buffer = io.BytesIO()
             plt.savefig(buffer, format="png")
