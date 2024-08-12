@@ -297,6 +297,8 @@ def visualize_agroverse_forecasting_data(
         None, help="The name of the output file."),
     vechile_config_path: Optional[str] = T.Option(
         "./data/config/agroverse/vehicle0.yaml", help="The configuration file for the autonomoous vehicle."),
+    bev_fov_scale: Optional[float] = T.Option(
+        5.0, help="The field of view scale for the bird's eye view, centered around the ego vehicle."),
     raw: Optional[bool] = T.Option(
         True, help="Whether to visualize the data raw or not - using the av2 apis."),
     show_pedestrian_xing: Optional[bool] = T.Option(
@@ -319,6 +321,7 @@ def visualize_agroverse_forecasting_data(
             scenario_id=scenario_id,
             output_filename=output_filename,
             av_configuration_path=vechile_config_path,
+            bev_fov_scale=bev_fov_scale,
             raw=raw,
             show_pedestrian_xing=show_pedestrian_xing,
             plot_occlusions=plot_occlusions,

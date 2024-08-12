@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from pathlib import Path
 from shapely import set_precision
+from shapely.affinity import scale
 from matplotlib.patches import Polygon
 from typing import Tuple, Union, List, Dict
 from av2.map.map_api import ArgoverseStaticMap
@@ -59,14 +60,16 @@ class AV2Forecasting(AV2Base):
     _DEFAULT_ACTOR_MARKERSIZE = 4
     _ESTIMATED_VEHICLE_SIZE = [4.0, 2.0] # Length, Width
     _ESTIMATED_AVEHICLE_SIZE = [4.5, 2.5] # Length, Width
+    _ESTIMATED_BUS_SIZE = [8.0, 2.0] # Length, Width
     _ESTIMATED_CYCLIST_SIZE = [2.0, 0.7] # Length, Width
+    _ESTIMATED_PEDESTRIAN_SIZE = [1.0, 1.0] # Length, Width
     _SENSOR_CAMERA_SIZE = [1.0, 0.1] # Length, Width
     _DRIVABLE_AREA_COLOR = "#7A7A7A"
     _LANE_SEGMENT_COLOR = "#E0E0E0"
     _PED_XING_COLOR = "#FF00FF"
     _DEFAULT_ACTOR_COLOR = "#D3E8EF"
     _DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_COLOR = "#00AA00"
-    _DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S = 25
+    _DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S = 5
     _TRACK_COLORS = {
         TrackCategory.TRACK_FRAGMENT: "#FFEE00",
         TrackCategory.UNSCORED_TRACK: "#00FFFF",
@@ -90,6 +93,11 @@ class AV2Forecasting(AV2Base):
     _AV_CAMERA_COVERAGE_STYLE = "-"
     # Focal agent
     _FOCAL_AGENT_COLOR = _TRACK_COLORS[TrackCategory.FOCAL_TRACK]
+    # Pesdestrian 
+    _PEDESTRIAN_COLOR = "#5F604F"
+    # Plot configurations
+    _PLOT_W_BUFFER = 30.0
+    _PLOT_H_BUFFER = 30.0
 
     def __init__(self, *args, **kwargs) -> None:
         """
@@ -103,6 +111,7 @@ class AV2Forecasting(AV2Base):
         self.scenario_id = kwargs.get("scenario_id", None)
         assert self.scenario_id is not None, "Scenario ID not provided."
         self.output_filename = kwargs.get("output_filename", None)
+        self.bev_fov_scale = max(0, kwargs.get("bev_fov_scale", 2))
         self.raw = kwargs.get("raw", True)
         self.av_configuration_path = kwargs.get("av_configuration_path", "./data/config/agroverse/vehicle0.yaml")
         self.show_pedestrian_xing = kwargs.get("show_pedestrian_xing", False)
@@ -446,6 +455,10 @@ class AV2Forecasting(AV2Base):
                 bbox = tuple(self._ESTIMATED_VEHICLE_SIZE)
             elif track.object_type == ObjectType.CYCLIST or track.object_type == ObjectType.MOTORCYCLIST:
                 bbox = tuple(self._ESTIMATED_CYCLIST_SIZE)
+            elif track.object_type == ObjectType.BUS:
+                bbox = tuple(self._ESTIMATED_BUS_SIZE)
+            elif track.object_type == ObjectType.PEDESTRIAN:
+                bbox = tuple(self._ESTIMATED_PEDESTRIAN_SIZE)
             else:
                 continue
             # Get corners of the rectangle, moving anti-clockwise from (x0, y0)
@@ -754,17 +767,20 @@ class AV2Forecasting(AV2Base):
                     all_inside = all(combined_polygon.contains(ShapelyPoint(point)) for point in actor_bbox)
                     if not all_inside:
                         mean = np.mean(actor_bbox, axis=0)
-                        plt.scatter(mean[0], mean[1], color=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_COLOR, s=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S, alpha=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_ALPHA)
+                        plt.scatter(mean[0], mean[1], color=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_COLOR, s=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S, alpha=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_ALPHA, zorder=np.inf)
 
-    def _plot_actors(self, ax: plt.Axes, timestep: int) -> None:
+    def _plot_actors(self, ax: plt.Axes, timestep: int) -> List[Tuple[float, float]]:
         """
         Plot actor tracks.
         Args:
             ax (plt.Axes): Matplotlib axes.
             timestep (int): Timestep.
+        Returns:
+            List[Tuple[float, float]]: List containing bounds.
         """
         logger.info(
             f"{self.__LOG_PREFIX__}: Plotting actor/tracks for the scenario for timestep: {timestep}")
+        av_bbox = None
         for track in self.scenario.tracks:
             # Get actor states
             actor_positions, actor_headings, _ = self._get_actor_states(track, timestep)
@@ -784,6 +800,11 @@ class AV2Forecasting(AV2Base):
                 bbox = tuple(self._ESTIMATED_VEHICLE_SIZE)
             elif track.object_type == ObjectType.CYCLIST or track.object_type == ObjectType.MOTORCYCLIST:
                 bbox = tuple(self._ESTIMATED_CYCLIST_SIZE)
+            elif track.object_type == ObjectType.BUS:
+                bbox = tuple(self._ESTIMATED_BUS_SIZE)
+            elif track.object_type == ObjectType.PEDESTRIAN:
+                bbox = tuple(self._ESTIMATED_PEDESTRIAN_SIZE)
+                actor_color = self._PEDESTRIAN_COLOR
             if track.object_type in self._STATIC_OBJECT_TYPES:
                 continue
             # Plot actor
@@ -801,6 +822,7 @@ class AV2Forecasting(AV2Base):
                     bbox_size=bbox,
                 )
                 if track.track_id == self._AV_ID and self.plot_occlusions:
+                    av_bbox = bbox_bounds
                     sensor_information = self._plot_occlusion_map(ax, bbox_bounds, actor_headings[-1], timestep)
             else:
                 plt.plot(
@@ -815,7 +837,23 @@ class AV2Forecasting(AV2Base):
         # Highlight visible actors
         if self.plot_occlusions:
             self._highlight_visible_actors(sensor_information)
-                
+        # Clip the plot to the AV bbox
+        if av_bbox is not None:
+            av_bbox_polygon = ShapelyPolygon(av_bbox)
+            av_bbox_polygon_scaled = scale(
+                av_bbox_polygon, xfact=self.bev_fov_scale, yfact=self.bev_fov_scale)
+            # Bounds returned are (minx, miny, maxx, maxy) by shapely
+            xmin = av_bbox_polygon_scaled.bounds[0] - self._PLOT_W_BUFFER
+            xmax = av_bbox_polygon_scaled.bounds[2] + self._PLOT_W_BUFFER
+            ymin = av_bbox_polygon_scaled.bounds[1] - self._PLOT_H_BUFFER
+            ymax = av_bbox_polygon_scaled.bounds[3] + self._PLOT_H_BUFFER
+            ax.set_xlim([xmin, xmax])
+            ax.set_ylim([ymin, ymax])
+        else:
+            xmin, xmax = ax.get_xlim()
+            ymin, ymax = ax.get_ylim()
+        return [(xmin, ymin), (xmax, ymax)]
+      
     def _generate_indetail_scenario_video(self, output_filename: str) -> str:
         """
         Generate detailed scenario video for the given scenario id.
@@ -842,7 +880,7 @@ class AV2Forecasting(AV2Base):
                 pedestrian_crossing_alpha=self._PED_XING_ALPHA,
                 pedestrian_crossing_color=self._PED_XING_COLOR
             )
-            self._plot_actors(ax, timestep)
+            _ = self._plot_actors(ax, timestep)
             # Save plot
             buffer = io.BytesIO()
             plt.savefig(buffer, format="png")
