@@ -7,7 +7,9 @@ import os
 import glob
 import logging
 import typer as T
+from rich.table import Table
 from dotenv import load_dotenv
+from rich.console import Console
 from typing import Optional, List, TYPE_CHECKING
 from src import AV2Forecasting, print_param_table
 from utils import only_linux
@@ -20,13 +22,18 @@ if TYPE_CHECKING:
 
 
 __app__ = T.Typer()
+__carla_app__ = T.Typer()
+__motion_planning_app__ = T.Typer()
+__agroverse_app__ = T.Typer()
+__agroverse_query_app__ = T.Typer()
+__console__ = Console()
 __app__.prog_name = "CARLA CLIENT CLI"
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------  DATA  ------------------------------------------------------------------------
-@__app__.command(name="generate_synthetic_data", help="This command generates synthetic data from various sensors in the Carla environment.")
+@__carla_app__.command(name="generate_synthetic_data", help="This command generates synthetic data from various sensors in the Carla environment.")
 @only_linux
 def generate_synthetic_data(
     hostname: Optional[str] = T.Option(
@@ -133,7 +140,8 @@ def generate_synthetic_data(
             f"An error occurred while generating the synthetic data: {e}")
         raise e
 
-@__app__.command(name="generate_configuration", help="This command generates configuration file for actors in the Carla environment.")
+
+@__carla_app__.command(name="generate_configuration", help="This command generates configuration file for actors in the Carla environment.")
 @only_linux
 def generate_configuration(
     number_of_actors: Optional[int] = T.Option(
@@ -177,7 +185,7 @@ def generate_configuration(
         raise e
 
 
-@__app__.command(name="generate_synthetic_data_report", help="This command generates report for all data generated synthetically.")
+@__carla_app__.command(name="generate_synthetic_data_report", help="This command generates report for all data generated synthetically.")
 @only_linux
 def generate_synthetic_data_report(
     data_dir: Optional[str] = T.Option(
@@ -223,7 +231,7 @@ def generate_synthetic_data_report(
 # -----------------------------------------------------------------------------------------------------------------------------
 
 # ---------------------------------------------  MOTION PLANNING  -------------------------------------------------------------
-@__app__.command(name="generate_route", help="This command generates a graph of the given Carla Town map and uses it to find a path from the start to the goal.")
+@__motion_planning_app__.command(name="generate_route", help="This command generates a graph of the given Carla Town map and uses it to find a path from the start to the goal.")
 @only_linux
 def generate_route(
     hostname: Optional[str] = T.Option(
@@ -284,8 +292,8 @@ def generate_route(
 
 # -----------------------------------------------------------------------------------------------------------------------------
 
-# ---------------------------------------------- AGROVERSE DATA  --------------------------------------------------------------
-@__app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data.")
+# ------------------------------------------------- AGROVERSE -----------------------------------------------------------------
+@__agroverse_app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data.")
 def visualize_agroverse_forecasting_data(
     input_directory: Optional[str] = T.Option(
         "./data/online/av2/train", help="The directory containing the Agroverse forecasting data instance."),
@@ -294,7 +302,7 @@ def visualize_agroverse_forecasting_data(
     scenario_id: Optional[str] = T.Option(
         "0000b0f9-99f9-4a1f-a231-5be9e4c523f7", help="The scenario id for the Agroverse forecasting data instance."),
     output_filename: Optional[str] = T.Option(
-        None, help="The name of the output file."),
+        None, help="The name of the output file with extension."),
     vechile_config_path: Optional[str] = T.Option(
         "./data/config/agroverse/vehicle0.yaml", help="The configuration file for the autonomoous vehicle."),
     bev_fov_scale: Optional[float] = T.Option(
@@ -334,16 +342,76 @@ def visualize_agroverse_forecasting_data(
         logger.error(
             f"An error occurred while visualizing the Agroverse forecasting data: {e}")
         raise e
+
+
+@__agroverse_app__.command(name="generate_analytics_agroverse_forecasting_data", help="This command generates analytics for the Agroverse forecasting data.")
+def generate_analytics_agroverse_forecasting_data(
+    input_directory: Optional[str] = T.Option(
+        "./data/online/av2/train", help="The directory containing the Agroverse forecasting data instance."),
+    output_directory: Optional[str] = T.Option(
+        "./data/interim/csv", help="The directory where the analytics file will be stored."),
+    output_filename: Optional[str] = T.Option(
+        "av2_forecasting_data_analytics.csv", help="The name of the output file with extension."),
+    overwrite: Optional[bool] = T.Option(
+        True, help="Whether to overwrite the existing analytics file or not - if it exists."),
+) -> None:
+    # Print the configuration of this function.
+    print_param_table(
+        parmas=locals(), title="Parameters for `generate_analytics_agroverse_forecasting_data(...)`")
+    try:
+        # Instantiate and configure the Agroverse forecasting dataset instance.
+        _ = AV2Forecasting(
+            input_directory=input_directory,
+            output_directory=output_directory,
+            output_filename=output_filename,
+            overwrite=overwrite
+        ).get_analytics()
+    except Exception as e:
+        logger.error(
+            f"An error occurred while generating analytics for the Agroverse forecasting data: {e}")
+        raise e
+    
+
+@__agroverse_query_app__.command(name="av2_forecasting_query_max_occurrence", help="This command queries the maximum occurrence based on a given object type for the Agroverse forecasting data.")
+def av2_forecasting_query_max_occurrence(
+    csv_file: Optional[str] = T.Option(
+        "./data/interim/csv/av2_forecasting_data_analytics.csv", help="The path to the csv analytics file."),
+    object_type: Optional[str] = T.Option(
+        "pedestrian", help="The object type for which the maximum occurrence is to be queried - [pedestrian, cyclist, motorcyclist, vehicle, bus]."),
+    top_k: Optional[int] = T.Option(
+        10, help="The top k scenarios to be displayed."),
+    save: Optional[bool] = T.Option(
+        False, help="Whether to save the output or not.")
+) -> None:
+    # Print the configuration of this function.
+    print_param_table(
+        parmas=locals(), title="Parameters for `av2_forecasting_query_max_occurrence(...)`")
+    try:
+        # Instantiate and configure the Agroverse forecasting dataset instance.
+        df, _ = AV2Forecasting.query_max_occurrence(csv_file=csv_file, object_type=object_type, top_k=top_k, save=save)
+        __console__.print(f"List of scenarios for the given query:\n{df['scenario_id'].tolist()}")
+        table = Table(*df.columns.tolist())
+        for _, row in df.iterrows():
+            table.add_row(*[str(item) for item in row.tolist()])
+        __console__.print(table)
+    except Exception as e:
+        logger.error(
+            f"An error occurred while quering the analytics file for the Agroverse forecasting data: {e}")
+        raise e
     
 # -----------------------------------------------------------------------------------------------------------------------------
 
 # -----------------------------------------------  MODULE TEST  ---------------------------------------------------------------
 @__app__.command(name="hello_world", help="Hello World!")
 def hello_world() -> None:
-    print("Hello World!")
+    __console__.print("Hello World!")
 
 # -----------------------------------------------------------------------------------------------------------------------------
 
+__app__.add_typer(__carla_app__, name="carla", help="Commands for the Carla environment.")
+__app__.add_typer(__motion_planning_app__, name="motion_planning", help="Commands for the motion planning.")
+__app__.add_typer(__agroverse_app__, name="av2", help="Commands for handling Agroverse dataset.")
+__agroverse_app__.add_typer(__agroverse_query_app__, name="query", help="Commands for querying the Agroverse dataset.")
 
 if __name__ == "__main__":
     __app__()

@@ -366,3 +366,29 @@ def bilinear_interpolate(patch: np.ndarray, x_frac: float = 1.0, y_frac: float =
         y_interp_bh + y_frac * (y_interp_th - y_interp_bh)
     )
     return np.array([x_interpolated, y_interpolated])
+
+def compute_total_distance(points: np.ndarray) -> Tuple[float, np.ndarray]:
+    """
+    Compute the total distance spanned by the points.
+    Input parameters:
+        - points: np.ndarray - the points.
+    Output:
+        - Tuple[float, np.ndarray]: the total distance and the distance between each point.
+    """
+    diff = np.diff(points, axis=0)
+    distance = np.linalg.norm(diff, axis=1)
+    return np.sum(distance), distance
+
+def compute_average_velocity(points: np.ndarray, velocities: np.ndarray) -> float:
+    """
+    Compute the average velocity, give a bunch of points and velocity vectors at those points.
+    Input parameters:
+        - points: np.ndarray - the points.
+        - velocities: np.ndarray - the velocities.
+    Output:
+        - float: the average velocity.
+    """
+    total_distance, distance = compute_total_distance(points)
+    speed = np.linalg.norm(velocities[:-1], axis=1)
+    total_time = np.sum(distance / speed)
+    return total_distance / total_time

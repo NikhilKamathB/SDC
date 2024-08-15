@@ -6,15 +6,18 @@ import io
 import os
 import logging
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 from pathlib import Path
 from shapely import set_precision
 from shapely.affinity import scale
+from collections import defaultdict
 from matplotlib.patches import Polygon
-from typing import Tuple, Union, List, Dict
+from rich.progress import track as rich_track
 from av2.map.map_api import ArgoverseStaticMap
 from shapely.geometry import Point as ShapelyPoint
+from typing import Tuple, Union, List, Dict, DefaultDict
 from shapely.geometry.polygon import Polygon as ShapelyPolygon
 from shapely import unary_union, LineString as ShapelyLineString
 from av2.datasets.motion_forecasting import scenario_serialization
@@ -25,7 +28,8 @@ from av2.datasets.motion_forecasting.viz.scenario_visualization import visualize
 from src.agroverse.base import AV2Base
 from src.agroverse.constants import CAMERA_TYPE_NAME
 from src.agroverse.utils import av2_plot_polylines, av2_plot_bbox
-from src.utils.utils import write_video, read_yaml_file, bilinear_interpolate
+from src.agroverse.model.enum import AV2ForecastingAnalyticsAttributes
+from src.utils.utils import write_video, read_yaml_file, bilinear_interpolate, compute_total_distance
 from src.agroverse.model.validators import InternalCameraMountResponse, SensorInformation, Vehicle as AV2Vehicle
 
 
@@ -105,11 +109,10 @@ class AV2Forecasting(AV2Base):
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing Agroverse Forecasting - av2 - dataset instance.")
         self.input_directory = kwargs.get("input_directory", None)
-        assert self.input_directory is not None, "Input directory not provided."
         self.output_directory = kwargs.get("output_directory", None)
+        assert self.input_directory is not None, "Input directory not provided."
         assert self.output_directory is not None, "Output directory not provided."
         self.scenario_id = kwargs.get("scenario_id", None)
-        assert self.scenario_id is not None, "Scenario ID not provided."
         self.output_filename = kwargs.get("output_filename", None)
         self.bev_fov_scale = max(0, kwargs.get("bev_fov_scale", 2))
         self.raw = kwargs.get("raw", True)
@@ -118,7 +121,15 @@ class AV2Forecasting(AV2Base):
         self.plot_occlusions = kwargs.get("plot_occlusions", True)
         self.codec = kwargs.get("codec", "mp4v")
         self.fps = kwargs.get("fps", 10)
-        self.static_map_file, self.scenario_file = self._get_input_file_names()
+        self.overwrite = kwargs.get("overwrite", False)
+    
+    def _init_visualization(self) -> None:
+        """
+        Initialize visualization.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Initializing visualization.")
+        assert self.scenario_id is not None, "Scenario ID not provided."
+        self.static_map_file, self.scenario_file = self._get_input_file_names(scenario_id=self.scenario_id)
         self.scenario = scenario_serialization.load_argoverse_scenario_parquet(
             Path(os.path.join(self.input_directory, self.scenario_id, self.scenario_file))
         )
@@ -126,7 +137,7 @@ class AV2Forecasting(AV2Base):
             Path(os.path.join(self.input_directory, self.scenario_id, self.static_map_file))
         )
         self.av_configuration = self._get_av_configuration()
-    
+
     def _make_output_directory(self) -> None:
         """
         Make output directory.
@@ -145,18 +156,20 @@ class AV2Forecasting(AV2Base):
         logger.debug(f"{self.__LOG_PREFIX__}: Getting output file path.")
         return Path(os.path.join(self.output_directory, output_filename))
     
-    def _get_input_file_names(self) -> Tuple[str, str]:
+    def _get_input_file_names(self, scenario_id: str) -> Tuple[str, str]:
         """
         Get input file names - static map and scenario.
         As per the agroverse v2 dataset the input directory should contain two files:
         1. log_map_archive_<scenario_id>.json   # static map
         2. scenario_<scenario_id>.parquet    # scenario file
+        Args:
+            scenario_id (str): Scenario id.
         Returns:
             Tuple[str, str]: Tuple containing static map and scenario file names.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Getting input file names.")
-        static_map_file = f"log_map_archive_{self.scenario_id}.json"
-        scenario_file = f"scenario_{self.scenario_id}.parquet"
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting input file names.")
+        static_map_file = f"log_map_archive_{scenario_id}.json"
+        scenario_file = f"scenario_{scenario_id}.parquet"
         return static_map_file, scenario_file
 
     def _get_av_configuration(self) -> AV2Vehicle:
@@ -890,16 +903,259 @@ class AV2Forecasting(AV2Base):
         # Save video
         video_file_path = self._get_output_file_path(output_filename)
         _ = write_video(frames, video_file_path, fps=self.fps, codec=self.codec)
-        logger.info(f"{self.__LOG_PREFIX__}: Detailed scenario video generated.")
+        logger.info(f"{self.__LOG_PREFIX__}: Detailed scenario video generated at path: {video_file_path}")
+        return video_file_path
     
-    def visualize(self) -> Union[str, None]:
+    def visualize(self) -> str:
         """
         Visualize motion forecasting data.
+        Returns:
+            str: Path to the generated video
         """
         logger.info(f"{self.__LOG_PREFIX__}: Visualizing motion forecasting data.")
+        self._init_visualization()
         if self.output_filename is None:
             self.output_filename = f"{self.scenario_id}.mp4"
         self._make_output_directory()
         if self.raw:
             return self._generate_scenario_video(output_filename=self.output_filename)
         return self._generate_indetail_scenario_video(output_filename=self.output_filename)
+
+    def _get_analytics(self, output_filename: str, step_size: int = 1000) -> str:
+        """
+        Core implementation for getting AV2 forecasting data analytics.
+        Args:
+            output_filename (str): Output filename.
+            step_size: Step size for which the data will be stored.
+        Returns:
+            str: Path to the generated analytics file.
+        """
+
+        def get_distance_stats(distance_dict: DefaultDict[str, float]) -> Tuple[float, float, str, float, str, float]:
+            """
+            Given a dictionary containing distance_dict for actors, return information such as average, min, max, etc.
+            Args:
+                distance_dict (DefaultDict[str, float]): Dictionary containing distance data for actors.
+            Returns:
+                Tuple[float, float, str, float, str, float]: Tuple containing mean, median, actor with min distance, min distance, actor with max distance, max distance.
+            """
+            logger.debug(f"{self.__LOG_PREFIX__}: Getting actor-dictionary statistics.")
+            actors, distances = list(distance_dict.keys()), list(distance_dict.values())
+            if len(distances) == 0:
+                return None, None, None, None, None, None
+            mean_distance = np.mean(distances)
+            median_distance = np.median(distances)
+            min_distance_arg = np.argmin(distances)
+            max_distance_arg = np.argmax(distances)
+            return mean_distance, median_distance, actors[min_distance_arg], distances[min_distance_arg], actors[max_distance_arg], distances[max_distance_arg]
+
+        def df_concat(df_candidate: pd.DataFrame) -> None:
+            """
+            Concatenate the candidate dataframe with the existing dataframe.
+            Args:
+                df_candidate (pd.DataFrame): Candidate dataframe.
+            """
+            nonlocal df
+            logger.debug(f"{self.__LOG_PREFIX__}: Concatenating the candidate dataframe with the existing dataframe.")
+            if df.empty:
+                df = pd.DataFrame(batch)
+            else:
+                df = pd.concat([df, df_candidate], ignore_index=True)
+
+        logger.info(f"{self.__LOG_PREFIX__}: Getting analytics of the motion forecasting data.")
+        csv_file_path = self._get_output_file_path(output_filename)
+        if self.overwrite:
+            if os.path.exists(csv_file_path): os.remove(csv_file_path)
+        if os.path.exists(csv_file_path):
+            df = pd.read_csv(csv_file_path)
+        else:
+            df = pd.DataFrame(columns=[item.value for item in AV2ForecastingAnalyticsAttributes])
+        batch = []
+        total_items = len(list(Path(self.input_directory).glob("*")))
+        logger.info(f"{self.__LOG_PREFIX__}: There are {total_items} scenarios to process.")
+        logger.info(f"{self.__LOG_PREFIX__}: Skipping scenarios already present in the analytics file if any - found {len(df)} scenarios.")
+        for _, item in enumerate(rich_track(Path(self.input_directory).glob("*"), total=total_items, description="Generating...")):
+            scenario_id = item.name
+            if scenario_id in df[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value].values:
+                continue
+            if not item.is_dir():
+                continue
+            # Get metadata
+            parent_dir = item.parent.name
+            _, scenario_file = self._get_input_file_names(scenario_id)
+            scenario = scenario_serialization.load_argoverse_scenario_parquet(
+                Path(os.path.join(self.input_directory, scenario_id, scenario_file))
+            )
+            # Get other attributes
+            av_distance = 0
+            pedestrians, cyclists, motorcyclists, vehicles, buses = set(), set(), set(), set(), set()
+            pedestrian_dict, cyclist_dict, motorcyclist_dict, vehicle_dict, bus_dict = defaultdict(float), defaultdict(float), defaultdict(float), defaultdict(float), defaultdict(float)
+            for timestep in range(self._OBSERVATION_DURATION_TIMESTEPS + self._PREDICTION_DURATION_TIMESTEPS):
+                for track in scenario.tracks:
+                    actor_positions, _, actor_velocities = self._get_actor_states(track, timestep)
+                    if actor_positions.shape[0] == 0 or actor_velocities.shape[0] == 0:
+                        continue
+                    total_distance, _ = compute_total_distance(actor_positions)
+                    if track.track_id == self._AV_ID:
+                        av_distance = total_distance
+                    elif track.object_type == ObjectType.PEDESTRIAN:
+                        pedestrians.add(track.track_id)
+                        pedestrian_dict[track.track_id] = max(pedestrian_dict[track.track_id], total_distance)
+                    elif track.object_type == ObjectType.CYCLIST:
+                        cyclists.add(track.track_id)
+                        cyclist_dict[track.track_id] = max(cyclist_dict[track.track_id], total_distance)
+                    elif track.object_type == ObjectType.MOTORCYCLIST:
+                        motorcyclists.add(track.track_id)
+                        motorcyclist_dict[track.track_id] = max(motorcyclist_dict[track.track_id], total_distance)
+                    elif track.object_type == ObjectType.VEHICLE:
+                        vehicles.add(track.track_id)
+                        vehicle_dict[track.track_id] = max(vehicle_dict[track.track_id], total_distance)
+                    elif track.object_type == ObjectType.BUS:
+                        buses.add(track.track_id)
+                        bus_dict[track.track_id] = max(bus_dict[track.track_id], total_distance)
+            n_pedestrians, n_cyclists, n_motorcyclists, n_vehicles, n_buses = len(pedestrians), len(cyclists), len(motorcyclists), len(vehicles), len(buses)
+            mean_pedestrian_distance, median_pedestrian_distance, min_pedestrian_distance_id, min_pedestrian_distance, max_pedestrian_distance_id, max_pedestrian_distance = get_distance_stats(pedestrian_dict)
+            mean_cyclist_distance, median_cyclist_distance, min_cyclist_distance_id, min_cyclist_distance, max_cyclist_distance_id, max_cyclist_distance = get_distance_stats(cyclist_dict)
+            mean_motorcyclist_distance, median_motorcyclist_distance, min_motorcyclist_distance_id, min_motorcyclist_distance, max_motorcyclist_distance_id, max_motorcyclist_distance = get_distance_stats(motorcyclist_dict)
+            mean_vehicle_distance, median_vehicle_distance, min_vehicle_distance_id, min_vehicle_distance, max_vehicle_distance_id, max_vehicle_distance = get_distance_stats(vehicle_dict)
+            mean_bus_distance, median_bus_distance, min_bus_distance_id, min_bus_distance, max_bus_distance_id, max_bus_distance = get_distance_stats(bus_dict)
+            batch.append(
+                {
+                    AV2ForecastingAnalyticsAttributes.DIRECTORY.value: parent_dir,
+                    AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value: scenario_id,
+                    AV2ForecastingAnalyticsAttributes.AV_DISTANCE.value: av_distance,
+                    AV2ForecastingAnalyticsAttributes.N_PEDESTRIANS.value: n_pedestrians,
+                    AV2ForecastingAnalyticsAttributes.AVG_PEDESTRIAN_DISTANCE.value: mean_pedestrian_distance,
+                    AV2ForecastingAnalyticsAttributes.MEDIAN_PEDESTRIAN_DISTANCE.value: median_pedestrian_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_PEDESTRIAN_DISTANCE.value: min_pedestrian_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_PEDESTRIAN_DISTANCE_ID.value: min_pedestrian_distance_id,
+                    AV2ForecastingAnalyticsAttributes.MAX_PEDESTRIAN_DISTANCE.value: max_pedestrian_distance,
+                    AV2ForecastingAnalyticsAttributes.MAX_PEDESTRIAN_DISTANCE_ID.value: max_pedestrian_distance_id,
+                    AV2ForecastingAnalyticsAttributes.N_CYCLISTS.value: n_cyclists,
+                    AV2ForecastingAnalyticsAttributes.AVG_CYCLIST_DISTANCE.value: mean_cyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MEDIAN_CYCLIST_DISTANCE.value: median_cyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_CYCLIST_DISTANCE.value: min_cyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_CYCLIST_DISTANCE_ID.value: min_cyclist_distance_id,
+                    AV2ForecastingAnalyticsAttributes.MAX_CYCLIST_DISTANCE.value: max_cyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MAX_CYCLIST_DISTANCE_ID.value: max_cyclist_distance_id,
+                    AV2ForecastingAnalyticsAttributes.N_MOTORCYCLISTS.value: n_motorcyclists,
+                    AV2ForecastingAnalyticsAttributes.AVG_MOTORCYCLIST_DISTANCE.value: mean_motorcyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MEDIAN_MOTORCYCLIST_DISTANCE.value: median_motorcyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_MOTORCYCLIST_DISTANCE.value: min_motorcyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_MOTORCYCLIST_DISTANCE_ID.value: min_motorcyclist_distance_id,
+                    AV2ForecastingAnalyticsAttributes.MAX_MOTORCYCLIST_DISTANCE.value: max_motorcyclist_distance,
+                    AV2ForecastingAnalyticsAttributes.MAX_MOTORCYCLIST_DISTANCE_ID.value: max_motorcyclist_distance_id,
+                    AV2ForecastingAnalyticsAttributes.N_VEHICLES.value: n_vehicles,
+                    AV2ForecastingAnalyticsAttributes.AVG_VEHICLE_DISTANCE.value: mean_vehicle_distance,
+                    AV2ForecastingAnalyticsAttributes.MEDIAN_VEHICLE_DISTANCE.value: median_vehicle_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_VEHICLE_DISTANCE.value: min_vehicle_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_VEHICLE_DISTANCE_ID.value: min_vehicle_distance_id,
+                    AV2ForecastingAnalyticsAttributes.MAX_VEHICLE_DISTANCE.value: max_vehicle_distance,
+                    AV2ForecastingAnalyticsAttributes.MAX_VEHICLE_DISTANCE_ID.value: max_vehicle_distance_id,
+                    AV2ForecastingAnalyticsAttributes.N_BUSES.value: n_buses,
+                    AV2ForecastingAnalyticsAttributes.AVG_BUS_DISTANCE.value: mean_bus_distance,
+                    AV2ForecastingAnalyticsAttributes.MEDIAN_BUS_DISTANCE.value: median_bus_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_BUS_DISTANCE.value: min_bus_distance,
+                    AV2ForecastingAnalyticsAttributes.MIN_BUS_DISTANCE_ID.value: min_bus_distance_id,
+                    AV2ForecastingAnalyticsAttributes.MAX_BUS_DISTANCE.value: max_bus_distance,
+                    AV2ForecastingAnalyticsAttributes.MAX_BUS_DISTANCE_ID.value: max_bus_distance_id
+                }
+            )
+            if len(batch) == step_size:
+                df_concat(pd.DataFrame(batch))
+        df_concat(pd.DataFrame(batch))
+        if df[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value].nunique() != len(df[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value]):
+            logger.warning(f"{self.__LOG_PREFIX__}: There are duplicate scenario ids in the analytics file.")
+        df.to_csv(csv_file_path, index=False)
+        logger.info(
+            f"{self.__LOG_PREFIX__}: Generated a total of {len(df)} scenarios analytics for the motion forecasting data at path: {csv_file_path}")
+        return csv_file_path
+
+    def get_analytics(self, step_size: int = 1000) -> str:
+        """
+        Get analytics of the motion forecasting data for the duration _OBSERVATION_DURATION_TIMESTEPS + _PREDICTION_DURATION_TIMESTEPS (per clip).
+        Args:
+            step_size: Step size for which the data will be stored.
+        Returns:
+            str: Path to the generated analytics file.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Initializing analytics for the motion forecasting data.")
+        if self.output_filename is None:
+            self.output_filename = f"av2_forecasting_data_analytics.csv"
+        self._make_output_directory()
+        return self._get_analytics(output_filename=self.output_filename, step_size=step_size)
+
+    @classmethod
+    def query_max_occurrence(cls, csv_file: str, object_type: str, top_k: int = 5, save: bool = False) -> Tuple[pd.DataFrame, str]:
+        """
+        Query the maximum occurrence of the object type in the given CSV file.
+        Args:
+            csv_file (str): Path to the CSV file.
+            object_type (str): Object type.
+            top_k (int): Top k occurrences.
+            save (bool): Save the queried data.
+        Returns:
+            Tuple[pd.DataFrame, str]: Tuple containing the queried data and the path to the saved CSV file.
+        """
+        logger.info(f"{cls.__LOG_PREFIX__}: Querying maximum occurrence of the object type in the given CSV file.")
+        df = pd.read_csv(csv_file)
+        if object_type == ObjectType.PEDESTRIAN:
+            res = df.sort_values(by=[
+                AV2ForecastingAnalyticsAttributes.N_PEDESTRIANS.value,
+                AV2ForecastingAnalyticsAttributes.AVG_PEDESTRIAN_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MEDIAN_PEDESTRIAN_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MAX_PEDESTRIAN_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MIN_PEDESTRIAN_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value
+            ], ascending=False)
+            res_display = res[[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value, AV2ForecastingAnalyticsAttributes.N_PEDESTRIANS.value, AV2ForecastingAnalyticsAttributes.AVG_PEDESTRIAN_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MEDIAN_PEDESTRIAN_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MAX_PEDESTRIAN_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MIN_PEDESTRIAN_DISTANCE.value]]
+        elif object_type == ObjectType.CYCLIST:
+            res = df.sort_values(by=[
+                AV2ForecastingAnalyticsAttributes.N_CYCLISTS.value,
+                AV2ForecastingAnalyticsAttributes.AVG_CYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MEDIAN_CYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MAX_CYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MIN_CYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value
+            ], ascending=False)
+            res_display = res[[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value, AV2ForecastingAnalyticsAttributes.N_CYCLISTS.value, AV2ForecastingAnalyticsAttributes.AVG_CYCLIST_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MEDIAN_CYCLIST_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MAX_CYCLIST_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MIN_CYCLIST_DISTANCE.value]]
+        elif object_type == ObjectType.MOTORCYCLIST:
+            res = df.sort_values(by=[
+                AV2ForecastingAnalyticsAttributes.N_MOTORCYCLISTS.value,
+                AV2ForecastingAnalyticsAttributes.AVG_MOTORCYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MEDIAN_MOTORCYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MAX_MOTORCYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MIN_MOTORCYCLIST_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value
+            ], ascending=False)
+            res_display = res[[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value, AV2ForecastingAnalyticsAttributes.N_MOTORCYCLISTS.value, AV2ForecastingAnalyticsAttributes.AVG_MOTORCYCLIST_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MEDIAN_MOTORCYCLIST_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MAX_MOTORCYCLIST_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MIN_MOTORCYCLIST_DISTANCE.value]]
+        elif object_type == ObjectType.VEHICLE:
+            res = df.sort_values(by=[
+                AV2ForecastingAnalyticsAttributes.N_VEHICLES.value,
+                AV2ForecastingAnalyticsAttributes.AVG_VEHICLE_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MEDIAN_VEHICLE_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MAX_VEHICLE_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MIN_VEHICLE_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value
+            ], ascending=False)
+            res_display = res[[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value, AV2ForecastingAnalyticsAttributes.N_VEHICLES.value, AV2ForecastingAnalyticsAttributes.AVG_VEHICLE_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MEDIAN_VEHICLE_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MAX_VEHICLE_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MIN_VEHICLE_DISTANCE.value]]
+        elif object_type == ObjectType.BUS:
+            res = df.sort_values(by=[
+                AV2ForecastingAnalyticsAttributes.N_BUSES.value,
+                AV2ForecastingAnalyticsAttributes.AVG_BUS_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MEDIAN_BUS_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MAX_BUS_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.MIN_BUS_DISTANCE.value,
+                AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value
+            ], ascending=False)
+            res_display = res[[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value, AV2ForecastingAnalyticsAttributes.N_BUSES.value, AV2ForecastingAnalyticsAttributes.AVG_BUS_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MEDIAN_BUS_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MAX_BUS_DISTANCE.value, AV2ForecastingAnalyticsAttributes.MIN_BUS_DISTANCE.value]]
+        else:
+            raise ValueError(f"Invalid object type: {object_type}")
+        csv_res_file = None
+        if save:
+            csv_store_path = Path(csv_file)
+            store_dir = csv_store_path.parent
+            csv_res_file = store_dir / f"{csv_store_path.name.split('.')[0]}_max_occurrence_{object_type}.csv"
+            res.to_csv(csv_res_file, index=False)
+            logger.info(f"{cls.__LOG_PREFIX__}: Queried data saved at path: {csv_res_file}")
+        return res_display.head(top_k), csv_res_file
