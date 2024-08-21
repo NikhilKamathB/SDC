@@ -14,6 +14,7 @@ from shapely import set_precision
 from shapely.affinity import scale
 from collections import defaultdict
 from matplotlib.patches import Polygon
+from shapely.errors import GEOSException
 from rich.progress import track as rich_track
 from av2.map.map_api import ArgoverseStaticMap
 from shapely.geometry import Point as ShapelyPoint
@@ -30,7 +31,7 @@ from src.agroverse.constants import CAMERA_TYPE_NAME
 from src.agroverse.utils import av2_plot_polylines, av2_plot_bbox
 from src.agroverse.model.enum import AV2ForecastingAnalyticsAttributes
 from src.utils.utils import write_video, read_yaml_file, bilinear_interpolate, compute_total_distance
-from src.agroverse.model.validators import InternalCameraMountResponse, SensorInformation, Vehicle as AV2Vehicle
+from src.agroverse.model.validators import InternalCameraMountResponse, SensorInformation, ActorInformation, AV2MotionForecastingTimeStep, Vehicle as AV2Vehicle
 
 
 logger = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class AV2Forecasting(AV2Base):
 
     __LOG_PREFIX__ = "AV2Forecasting"
     _EPSILON = 1e-10
+    _DISTANCE_THRESHOLD = 1e-6
     # Constants as per the agroverse v2 establishment
     _OBSERVATION_DURATION_TIMESTEPS = 50
     _PREDICTION_DURATION_TIMESTEPS = 60
@@ -129,6 +131,7 @@ class AV2Forecasting(AV2Base):
         """
         logger.info(f"{self.__LOG_PREFIX__}: Initializing visualization.")
         assert self.scenario_id is not None, "Scenario ID not provided."
+        self.output_directory = os.path.join(self.output_directory, self.scenario_id)
         self.static_map_file, self.scenario_file = self._get_input_file_names(scenario_id=self.scenario_id)
         self.scenario = scenario_serialization.load_argoverse_scenario_parquet(
             Path(os.path.join(self.input_directory, self.scenario_id, self.scenario_file))
@@ -444,7 +447,7 @@ class AV2Forecasting(AV2Base):
         )
         return np.array(polygon_vertex)
 
-    def _get_actors_in_sensor_coverage(self, sensor_coverage: ShapelyPolygon, timestep: int) -> Tuple[Dict[ShapelyPolygon, np.ndarray], List[str]]:
+    def _get_actors_in_sensor_coverage(self, sensor_coverage: ShapelyPolygon, timestep: int) -> Tuple[Dict[ShapelyPolygon, ShapelyPolygon], List[str]]:
         """
         Get actors in the sensor coverage.
         Args:
@@ -453,7 +456,7 @@ class AV2Forecasting(AV2Base):
             lower_bound_point (np.ndarray): Lower bound point.
             timestep (int): Timestep.
         Returns:
-            Tuple[Dict[ShapelyPolygon, np.ndarray], List[str]]: Dictionary containing actors in the sensor coverage and list of actor ids.
+            Tuple[Dict[ShapelyPolygon, ShapelyPolygon], List[str]]: Dictionary containing actors in the sensor coverage and list of actor ids.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting actors in the sensor coverage.")
         actors = dict()
@@ -492,7 +495,7 @@ class AV2Forecasting(AV2Base):
             if intersection.is_empty:
                 continue
             else:
-                actors[bbox_polygon] = np.array([point for point in intersection.exterior.coords])
+                actors[bbox_polygon] = intersection
                 actor_ids.append(track.track_id)
         return actors, actor_ids
     
@@ -508,7 +511,7 @@ class AV2Forecasting(AV2Base):
         logger.info(f"{self.__LOG_PREFIX__}: Getting actors extrimities.")
         extrimities = dict()
         for actor, vertices in actors.items():
-            bbox = vertices[:-1, :] # Last point is the same as the first point
+            bbox = np.array(vertices.exterior.coords)[:-1, :] # Last point is the same as the first point
             bbox_vec = bbox - pivot_point
             vec_projection = np.tril(np.dot(bbox_vec, bbox_vec.T))
             vec_magnitude = np.linalg.norm(bbox_vec, axis=1)[:, np.newaxis]
@@ -523,7 +526,7 @@ class AV2Forecasting(AV2Base):
             extrimities[actor] = idx # Item containing indices of extrimities - (idx1, idx2)
         return extrimities
     
-    def _get_visibility_region(self, coverage_polygon: ShapelyPolygon, pivot_point: np.ndarray, actors: Dict[ShapelyPolygon, np.ndarray], extrimities: Dict[ShapelyPolygon, Tuple[int, int]]) -> Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]:
+    def _get_visibility_region(self, coverage_polygon: ShapelyPolygon, pivot_point: np.ndarray, actors: Dict[ShapelyPolygon, ShapelyPolygon], extrimities: Dict[ShapelyPolygon, Tuple[int, int]]) -> Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]:
         """
         Get visibility region for the sensor.
         
@@ -546,7 +549,7 @@ class AV2Forecasting(AV2Base):
         Args:
             coverage_polygon (ShapelyPolygon): Sensor coverage polygon.
             pivot_point (np.ndarray): Pivot point.
-            actors (Dict[ShapelyPolygon, np.ndarray]): Dictionary containing actors.
+            actors (Dict[ShapelyPolygon, ShapelyPolygon]): Dictionary containing actors.
             extrimities (Dict[ShapelyPolygon, Tuple[float, float]]): Dictionary containing actors extrimities.
         Returns:
             Dict[ShapelyPolygon, Tuple[List[np.ndarray], List[np.ndarray]]]: Dictionary containing the actor and its corresponding occluded and visible regions when viewed from the sensor.
@@ -583,10 +586,9 @@ class AV2Forecasting(AV2Base):
                     ]).reshape(-1, 2) # (n, 1, 2) -> (n, 2) because on shapely convention
                 else:
                     intersection_point = np.array(intersection.coords) # (n, 2)
-                intersection_point_distance = np.linalg.norm(intersection_point - pivot_point, axis=1)
-                intersection_point = intersection_point[~(np.isclose(intersection_point_distance, 0))]
+                intersection_point = intersection_point[~(np.linalg.norm(intersection_point - pivot_point, axis=1) < self._DISTANCE_THRESHOLD)]
                 if intersection_point.size == 0:
-                    intersection_point = None
+                    intersection_point = np.array(point.coords)
                 else:
                     if len(intersection_point.shape) == 1:
                         intersection_point = intersection_point[None, :]
@@ -611,15 +613,18 @@ class AV2Forecasting(AV2Base):
             actor_polygon = ShapelyPolygon(bbox.tolist())
             visible_polygon = ShapelyPolygon(bbox[extrimities_idx, :].tolist() + [pivot_point.tolist()])
             difference = actor_polygon.difference(visible_polygon, grid_size=self._DEFAULT_GRID_SIZE)
-            if isinstance(difference, ShapelyPolygon):
+            if difference.is_empty:
+                difference = list(bbox[extrimities_idx, :])
+            elif isinstance(difference, ShapelyPolygon):
                 difference = list(np.array(difference.exterior.coords)[:-1, :]) # Last point is the same as the first point
             else:
-                difference = list(np.array(difference.coords)) 
+                difference = list(np.array(difference.coords))
             return difference
             
         logger.info(f"{self.__LOG_PREFIX__}: Getting visibility region for the sensor.")
         visibility_dict = {}
         for actor, bbox in actors.items():
+            bbox = np.array(bbox.exterior.coords)
             p1, p2 = bbox[extrimities[actor], :].tolist()
             _, p1_u_vec = self._get_angle_and_unit_vector(pivot_point, p1)
             _, p2_u_vec = self._get_angle_and_unit_vector(pivot_point, p2)
@@ -655,14 +660,22 @@ class AV2Forecasting(AV2Base):
         occluded_region = []
         for _, (occluded_polygon, _) in visibility_dict.items():
             occluded_region.append(ShapelyPolygon(occluded_polygon))
-        consolidated_occluded_region = unary_union(occluded_region)
+        try:
+            consolidated_occluded_region = unary_union(occluded_region)
+        except GEOSException as geos_exception:
+            logger.warning(f"{self.__LOG_PREFIX__}: GEOSException: {geos_exception}")
+            # Fix polygon
+            for i in range(len(occluded_region)):
+                if not occluded_region[i].is_valid:
+                    occluded_region[i] = occluded_region[i].buffer(0)
+            consolidated_occluded_region = unary_union(occluded_region)
         if consolidated_occluded_region.is_empty:
             return []
         if isinstance(consolidated_occluded_region, ShapelyPolygon):
             return [consolidated_occluded_region]
         return list(consolidated_occluded_region.geoms)
 
-    def _get_occluded_region(self, pivot_point: np.ndarray, sensor_coverage: np.ndarray, timestep: int) -> List[ShapelyPolygon]:
+    def _get_occluded_region(self, pivot_point: np.ndarray, sensor_coverage: np.ndarray, timestep: int) -> Tuple[Dict[ShapelyPolygon, ShapelyPolygon], List[ShapelyPolygon], List[str]]:
         """
         Plot visible region for the sensor - occlusion considered.
         Args:
@@ -670,7 +683,7 @@ class AV2Forecasting(AV2Base):
             sensor_coverage (np.ndarray): Sensor coverage - a polygon.
             timestep (int): Timestep.
         Returns:
-            Tuple[Dict[ShapelyPolygon, np.ndarray], List[ShapelyPolygon], List[str]]: Tuple containing actors, occluded region polygons and actor ids.
+            Tuple[Dict[ShapelyPolygon, ShapelyPolygon], List[ShapelyPolygon], List[str]]: Tuple containing actors, occluded region polygons and actor ids.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Getting occluded region for the sensor.")
         sensor_coverage_polygon = ShapelyPolygon(sensor_coverage)
@@ -694,7 +707,7 @@ class AV2Forecasting(AV2Base):
             lower_bound_point (np.ndarray): Lower bound point.
             timestep (int): Timestep.
         Returns:
-            Tuple[Dict[ShapelyPolygon, np.ndarray], List[np.ndarray], List[ShapelyPolygon], List[str]]: Tuple containing actors, sensor coverage, occluded region polygons and actor ids.
+            Tuple[Dict[ShapelyPolygon, ShapelyPolygon], List[np.ndarray], List[ShapelyPolygon], List[str]]: Tuple containing actors, sensor coverage, occluded region polygons and actor ids.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Plotting coverage.")
         polygon_vertices = self._get_sensor_coverage(ax, pivot_point, upper_bound_point, lower_bound_point)
@@ -738,8 +751,8 @@ class AV2Forecasting(AV2Base):
                 sensor_information.append(
                     SensorInformation(
                         sensor=sensor,
-                        actors={
-                            actor_id: [np.array(actor_ply.exterior.coords), actor_bbox] for actor_id, actor_ply, actor_bbox in zip(actor_ids, actors.keys(), actors.values())
+                        actor_bbox_collection={
+                            actor_id: [np.array(actor_ply.exterior.coords), np.array(actor_bounds_in_sensor_cvg.exterior.coords)] for actor_id, actor_ply, actor_bounds_in_sensor_cvg in zip(actor_ids, actors.keys(), actors.values())
                         },
                         sensor_coverage=polygon_vertices,
                         occluded_regions=[np.array(occluded_region.exterior.coords) for occluded_region in occluded_region_polygons]
@@ -764,7 +777,7 @@ class AV2Forecasting(AV2Base):
         # Cast rays from sensors
         return self._cast_rays(ax, actor_heading, sensor_list, timestep)
 
-    def _highlight_visible_actors(self, sensor_information: List[SensorInformation] = None) -> None:
+    def _highlight_visible_actors(self, sensor_information: List[SensorInformation] = []) -> None:
         """
         Highlight visible actors.
         Args:
@@ -772,33 +785,70 @@ class AV2Forecasting(AV2Base):
             sensor_information (List[SensorInformation]): List containing sensor information.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Highlighting visible actors.")
-        if sensor_information is not None:
+        if sensor_information:
             for sensor_info in sensor_information:
                 occluded_ply = list(map(ShapelyPolygon, sensor_info.occluded_regions))
-                combined_polygon = unary_union(occluded_ply)
-                for _, (_, actor_bbox) in sensor_info.actors.items():
-                    all_inside = all(combined_polygon.contains(ShapelyPoint(point)) for point in actor_bbox)
-                    if not all_inside:
-                        mean = np.mean(actor_bbox, axis=0)
+                combined_polygon = set_precision(unary_union(occluded_ply), self._DEFAULT_SHAPELY_PRECISION)
+                for actor_id, (_, resultant_actor_bbox) in sensor_info.actor_bbox_collection.items():
+                    if not ShapelyPolygon(resultant_actor_bbox).within(combined_polygon):
+                        mean = np.mean(resultant_actor_bbox, axis=0)
+                        sensor_info.covered_actor_ids.append(actor_id)
                         plt.scatter(mean[0], mean[1], color=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_COLOR, s=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_S, alpha=self._DEFAULT_ACTOR_VISIBLE_HIGHLIGHT_ALPHA, zorder=np.inf)
+                        plt.text(mean[0] + self._DEFAULT_FONT_X_OFFSET, mean[1] + self._DEFAULT_FONT_Y_OFFSET, actor_id, fontsize=self._DEFAULT_FONT_SIZE, color=self._DEFAULT_FONT_COLOR, zorder=np.inf)
 
-    def _plot_actors(self, ax: plt.Axes, timestep: int) -> List[Tuple[float, float]]:
+    def _generate_ground_truth_data(self, timestep: int, actor_information: List[ActorInformation], sensor_information: List[SensorInformation], av_information: AV2Vehicle, visible_bounds: ShapelyPolygon) -> AV2MotionForecastingTimeStep:
+        """
+        Get ground truth data.
+        Args:
+            timestep (int): Timestep.
+            actor_information (List[ActorInformation]): List actor information.
+            sensor_information (List[SensorInformation]): List sensor information.
+            av_information (AV2Vehicle): AV information.
+            visible_bounds (ShapelyPolygon): Visible bounds.
+        Returns:
+            AV2MotionForecastingTimeStep: Ground truth data for this timestep.
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Generating ground truth data for the timestep {timestep}.")
+        for sensor_info in sensor_information:
+            for actor_id, (_, resultant_actor_bbox) in sensor_info.actor_bbox_collection.items():
+                if actor_id in sensor_info.covered_actor_ids and ShapelyPolygon(resultant_actor_bbox).intersects(visible_bounds):
+                    sensor_info.visible_actor_ids.append(actor_id)
+        return AV2MotionForecastingTimeStep(
+            timestep=timestep,
+            av=av_information,
+            actors=actor_information,
+            sensors=sensor_information,
+        )
+
+    def _plot_actors(self, ax: plt.Axes, timestep: int) -> AV2MotionForecastingTimeStep:
         """
         Plot actor tracks.
         Args:
             ax (plt.Axes): Matplotlib axes.
             timestep (int): Timestep.
         Returns:
-            List[Tuple[float, float]]: List containing bounds.
+            AV2MotionForecastingTimeStep: Ground truth data for this timestep.
         """
         logger.info(
             f"{self.__LOG_PREFIX__}: Plotting actor/tracks for the scenario for timestep: {timestep}")
         av_bbox = None
+        actor_information_at_timestep: List[ActorInformation] = []
         for track in self.scenario.tracks:
             # Get actor states
-            actor_positions, actor_headings, _ = self._get_actor_states(track, timestep)
-            if actor_positions.shape[0] == 0 or actor_headings.shape[0] == 0:
+            actor_positions, actor_headings, actor_velocity = self._get_actor_states(track, timestep)
+            if actor_positions.shape[0] == 0 or actor_headings.shape[0] == 0 or actor_velocity.shape[0] == 0:
                 continue
+            # Record actor information
+            actor_information_at_timestep.append(
+                ActorInformation(
+                    actor_id=track.track_id,
+                    heading=actor_headings[-1],
+                    position=actor_positions[-1],
+                    velocity=actor_velocity[-1],
+                    actor_type=track.object_type,
+                    actor_category=track.category
+                )
+            )
             # Set actor defaults and associated bbox
             actor_color = self._DEFAULT_ACTOR_COLOR
             actor_path_color = self._TRACK_COLORS.get(track.category, TrackCategory.TRACK_FRAGMENT)
@@ -821,7 +871,7 @@ class AV2Forecasting(AV2Base):
             if track.object_type in self._STATIC_OBJECT_TYPES:
                 continue
             # Plot actor
-            sensor_information = None
+            sensor_information = []
             if bbox is not None:
                 bbox_bounds = av2_plot_bbox(
                     ax=ax,
@@ -865,7 +915,14 @@ class AV2Forecasting(AV2Base):
         else:
             xmin, xmax = ax.get_xlim()
             ymin, ymax = ax.get_ylim()
-        return [(xmin, ymin), (xmax, ymax)]
+        # Generate GT data
+        return self._generate_ground_truth_data(
+            timestep,
+            actor_information_at_timestep,
+            sensor_information,
+            self.av_configuration,
+            ShapelyPolygon([(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)])
+        )
       
     def _generate_indetail_scenario_video(self, output_filename: str) -> str:
         """
@@ -905,21 +962,6 @@ class AV2Forecasting(AV2Base):
         _ = write_video(frames, video_file_path, fps=self.fps, codec=self.codec)
         logger.info(f"{self.__LOG_PREFIX__}: Detailed scenario video generated at path: {video_file_path}")
         return video_file_path
-    
-    def visualize(self) -> str:
-        """
-        Visualize motion forecasting data.
-        Returns:
-            str: Path to the generated video
-        """
-        logger.info(f"{self.__LOG_PREFIX__}: Visualizing motion forecasting data.")
-        self._init_visualization()
-        if self.output_filename is None:
-            self.output_filename = f"{self.scenario_id}.mp4"
-        self._make_output_directory()
-        if self.raw:
-            return self._generate_scenario_video(output_filename=self.output_filename)
-        return self._generate_indetail_scenario_video(output_filename=self.output_filename)
 
     def _get_analytics(self, output_filename: str, step_size: int = 1000) -> str:
         """
@@ -1063,7 +1105,8 @@ class AV2Forecasting(AV2Base):
             )
             if len(batch) == step_size:
                 df_concat(pd.DataFrame(batch))
-        df_concat(pd.DataFrame(batch))
+                batch = []
+        if batch: df_concat(pd.DataFrame(batch))
         if df[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value].nunique() != len(df[AV2ForecastingAnalyticsAttributes.SCENARIO_ID.value]):
             logger.warning(f"{self.__LOG_PREFIX__}: There are duplicate scenario ids in the analytics file.")
         df.to_csv(csv_file_path, index=False)
@@ -1071,6 +1114,21 @@ class AV2Forecasting(AV2Base):
             f"{self.__LOG_PREFIX__}: Generated a total of {len(df)} scenarios analytics for the motion forecasting data at path: {csv_file_path}")
         return csv_file_path
 
+    def visualize(self) -> str:
+        """
+        Visualize motion forecasting data.
+        Returns:
+            str: Path to the generated video
+        """
+        logger.info(f"{self.__LOG_PREFIX__}: Visualizing motion forecasting data.")
+        self._init_visualization()
+        if self.output_filename is None:
+            self.output_filename = f"{self.scenario_id}.mp4"
+        self._make_output_directory()
+        if self.raw:
+            return self._generate_scenario_video(output_filename=self.output_filename)
+        return self._generate_indetail_scenario_video(output_filename=self.output_filename)
+    
     def get_analytics(self, step_size: int = 1000) -> str:
         """
         Get analytics of the motion forecasting data for the duration _OBSERVATION_DURATION_TIMESTEPS + _PREDICTION_DURATION_TIMESTEPS (per clip).
@@ -1099,6 +1157,7 @@ class AV2Forecasting(AV2Base):
         """
         logger.info(f"{cls.__LOG_PREFIX__}: Querying maximum occurrence of the object type in the given CSV file.")
         df = pd.read_csv(csv_file)
+        logger.info(f"{cls.__LOG_PREFIX__}: There are a total of {len(df)} scenarios in the CSV file.")
         if object_type == ObjectType.PEDESTRIAN:
             res = df.sort_values(by=[
                 AV2ForecastingAnalyticsAttributes.N_PEDESTRIANS.value,

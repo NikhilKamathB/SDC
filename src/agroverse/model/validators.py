@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Union, Dict, Tuple
 from pydantic.functional_validators import AfterValidator
-from shapely.geometry.polygon import Polygon as ShapelyPolygon
+from av2.datasets.motion_forecasting.data_schema import TrackCategory, ObjectType
 from src.agroverse.constants import CAMERA_TYPE_NAME
 
 def validate_sensor_location(location: "Location") -> "Location":
@@ -33,6 +33,7 @@ def validate_camera_fov(fov: float) -> float:
     """
     assert 0 <= fov <= 180, "Field of view should be between 0 and 180."
     return fov
+
 
 class Location(BaseModel):
 
@@ -151,6 +152,44 @@ class SensorInformation(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     sensor: Union[InternalSensorMountResponse]
-    actors: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = {}
+    visible_actor_ids: Optional[List[str]] = []
+    covered_actor_ids: Optional[List[str]] = []
+    actor_bbox_collection: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = {}
     sensor_coverage: Optional[np.ndarray] = np.array([])
     occluded_regions: Optional[List[np.ndarray]] = []
+
+
+class ActorInformation(BaseModel):
+
+    """
+    Define the vehicle information model for agroverse here.
+    """
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    actor_id: str
+    heading: float
+    position: np.ndarray
+    velocity: np.ndarray
+    actor_type: Optional[ObjectType] = None
+    actor_category: Optional[TrackCategory] = None
+
+
+class AV2MotionForecastingTimeStep(BaseModel):
+    
+    """
+    Define the architecture for AV2 motion forecasting timestep.
+    """
+
+    timestep: int
+    av: Vehicle
+    actors: List[ActorInformation]
+    sensors: Optional[List[SensorInformation]] = []
+
+
+class AV2MotionForecastingGT(BaseModel):
+
+    """
+    Define the architecture for AV2 motion forecasting ground truth.
+    """
+
+    data: List[AV2MotionForecastingTimeStep]
