@@ -46,17 +46,7 @@ fi
 
 # Install required Python packages
 echo "Installing required Python packages..."
-pip install -r requirements.txt
-if [ -z "$INSTALL_SIMPAN_DEPENDENCIES" ]; then
-    echo "INSTALL_SIMPAN_DEPENDENCIES is not set. Please set it to true in your environment file if you would like to install the dependencies for the SimPan project. Skipping SimPan dependencies installation..."
-else
-    if [ "$INSTALL_SIMPAN_DEPENDENCIES" = "true" ]; then
-        echo "Installing SimPan dependencies..."
-        pip install -r requirements-simpan.txt
-    else
-        echo "INSTALL_SIMPAN_DEPENDENCIES is set to false. Skipping SimPan dependencies installation..."
-    fi
-fi
+poetry install
 
 # Install agro dependencies - https://argoverse.github.io/user-guide/argoverse_2.html
 echo "Installing Argoverse dependencies..."

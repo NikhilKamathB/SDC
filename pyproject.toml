@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "sdc"
+version = "0.1.0"
+description = "Self-Driving Car codebase"
+authors = ["Nikhil Bola Kamath <nikhilkb98@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+networkx = "^3.3"
+distro = "^1.9.0"
+future = "^1.0.0"
+pygame = "^2.6.0"
+numpy = "^2.1.1"
+pydantic = "^2.9.1"
+pandas = "^2.2.2"
+pytest = "^8.3.3"
+typer = "^0.12.5"
+dvc = "^3.55.2"
+pyyaml = "^6.0.2"
+python-dotenv = "^1.0.1"
+matplotlib = "^3.9.2"
+pillow = "^10.4.0"
+shapely = "^2.0.6"
+opencv-python = "^4.10.0.84"
+carla = {version = "0.9.15", markers = "platform_system == \"Linux\""}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
