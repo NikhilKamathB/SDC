@@ -24,15 +24,16 @@ if TYPE_CHECKING:
 __app__ = T.Typer()
 __carla_app__ = T.Typer()
 __motion_planning_app__ = T.Typer()
+__waymo_app__ = T.Typer()
 __agroverse_app__ = T.Typer()
 __agroverse_query_app__ = T.Typer()
 __console__ = Console()
-__app__.prog_name = "CARLA CLIENT CLI"
+__app__.prog_name = "SDC CLI"
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------  DATA  ------------------------------------------------------------------------
+# ------------------------------------------- CARLA DATA  ----------------------------------------------------------------------
 @__carla_app__.command(name="generate_synthetic_data", help="This command generates synthetic data from various sensors in the Carla environment.")
 @only_linux
 def generate_synthetic_data(
@@ -292,6 +293,29 @@ def generate_route(
 
 # -----------------------------------------------------------------------------------------------------------------------------
 
+# ------------------------------------------------- Waymo -----------------------------------------------------------------
+@__waymo_app__.command(name="visualize_waymo_open_motion_data", help="This command visualizes the Waymo open motion dataset.")
+def visualize_waymo_open_motion_data(
+    input_directory: Optional[str] = T.Option(
+        "./data/online/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/tf_example", help="The directory containing the Waymo open motion dataset."),
+    output_directory: Optional[str] = T.Option(
+        "./data/interim", help="The directory where the visualization will be stored."),
+    scenario_id: Optional[str] = T.Option(
+        "training_tfexample.tfrecord-00000-of-01000", help="The scenario id for the Waymo open motion dataset."),
+    output_filename: Optional[str] = T.Option(
+        None, help="The name of the output file with extension."),
+) -> None:
+    # Print the configuration of this function.
+    print_param_table(
+        parmas=locals(), title="Parameters for `visualize_waymo_open_motion_data(...)`")
+    try:
+        # Instantiate and configure the Waymo open motion dataset instance.
+        print("TODO: Implement this command.")
+    except Exception as e:
+        logger.error(
+            f"An error occurred while visualizing the Waymo open motion data: {e}")
+        raise e
+
 # ------------------------------------------------- AGROVERSE -----------------------------------------------------------------
 @__agroverse_app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data.")
 def visualize_agroverse_forecasting_data(
@@ -410,6 +434,7 @@ def hello_world() -> None:
 
 __app__.add_typer(__carla_app__, name="carla", help="Commands for the Carla environment.")
 __app__.add_typer(__motion_planning_app__, name="motion_planning", help="Commands for the motion planning.")
+__app__.add_typer(__waymo_app__, name="waymo", help="Commands for handling Waymo dataset.")
 __app__.add_typer(__agroverse_app__, name="av2", help="Commands for handling Agroverse dataset.")
 __agroverse_app__.add_typer(__agroverse_query_app__, name="query", help="Commands for querying the Agroverse dataset.")
 
