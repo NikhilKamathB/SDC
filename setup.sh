@@ -7,8 +7,8 @@
 # This script will:
 # 1. Clear the logs.
 # 2. Update the DVC components.
-# 3. Install required Python packages.
-# 4. Install the Argoverse dependencies.
+# 3. Install the Argoverse dependencies.
+# 4. Install required Python packages.
 # 5. Update the git submodules.
 # 6. Build the `algorithms` library.
 
@@ -44,14 +44,10 @@ else
     fi
 fi
 
-# Install required Python packages
-echo "Installing required Python packages..."
-poetry install
-
 # Install agro dependencies - https://argoverse.github.io/user-guide/argoverse_2.html
 echo "Installing Argoverse dependencies..."
 if [ -z "$AV2_DIRECTORY" ]; then
-    echo "AV2_DIRECTORY is not set. Please set it to true in your environment file if you would like to install the dependencies for the SimPan project. Skipping Argoverse dependencies installation..."
+    echo "AV2_DIRECTORY is not set. Please set it in your environment file if you would like to install the dependencies for the SimPan project. Skipping Argoverse dependencies installation..."
 else
     if [ ! -d "$AV2_DIRECTORY" ]; then
         echo "AV2_DIRECTORY does not exist. Creating directory..."
@@ -73,6 +69,10 @@ else
     )
     pip install -e $AV2_DIRECTORY/av2-api
 fi
+
+# Install required Python packages
+echo "Installing required Python packages..."
+poetry install
 
 # Update git submodules
 echo "Initializing/Updating git submodules..."
