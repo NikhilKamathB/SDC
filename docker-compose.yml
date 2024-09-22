@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/volumes/redis:/data
+    networks:
+      - redis-network
+
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    ports:
+      - "5540:5540"
+    volumes:
+      - ./data/volumes/redis-insight:/db
+    networks:
+      - redis-network
+    depends_on:
+      - redis
+   
+  waymo:
+    build:
+      context: ./workers/waymo
+    command: celery -A app worker --loglevel=info -Q waymo_queue
+    volumes:
+      - ./data:/data:ro
+      - ./data/interim:/data/interim:rw
+    networks:
+      - redis-network
+    environment:
+      - WAYMO_CELERY_BASE_URL=redis://redis:6379/
+      - WAYMO_CELERY_DATABASE_NUMBER=0
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+      - redis-insight
+
+  flower:
+    image: mher/flower:latest
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./data/volumes/flower:/data
+    networks:
+      - redis-network
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - redis-insight
+      - waymo
+
+networks:
+  redis-network:
+    driver: bridge

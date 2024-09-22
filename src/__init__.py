@@ -3,6 +3,7 @@
 ##########################################################################################################
 
 import os
+import sys
 import platform
 import logging
 from pathlib import Path
@@ -18,10 +19,15 @@ if not os.path.exists(__LOGGING_DIR__):
     os.makedirs(__LOGGING_DIR__)
 __setup_logger__(log_dir=__LOGGING_DIR__, level=__LOGGING_LEVEL__)
 
+sys.path.append(str(__PATH_ROOT__ / "workers" / "waymo"))
+
 from .utils.utils import print_param_table
 from .agroverse.forecasting import AV2Forecasting
+from .waymo.forecasting import WaymoForecasting
+
 __all__ = [
     "AV2Forecasting",
+    "WaymoForecasting",
     "print_param_table"
 ]
 

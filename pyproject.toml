@@ -23,6 +23,9 @@ matplotlib = "^3.9.2"
 pillow = "^10.4.0"
 shapely = "^2.0.6"
 opencv-python = "^4.10.0.84"
+kombu = "^5.4.2"
+celery = "^5.4.0"
+redis = "^5.0.8"
 carla = {version = "0.9.15", markers = "platform_system == \"Linux\""}
 
 
