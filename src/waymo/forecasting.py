@@ -3,8 +3,8 @@
 #########################################################################################################################
 
 import logging
-from workers.waymo import config
-from workers.waymo.app import app
+from workers.waymo_datasets import config
+from workers.waymo_datasets.app import app
 
 
 logger = logging.getLogger(__name__)

@@ -1,0 +1,22 @@
+{
+	"name": "waymo open dataset",
+	"dockerComposeFile": "../docker-compose.yml",
+	"service": "waymo_open_dataset",
+	"workspaceFolder": "/app",
+	"customizations": {
+		"vscode": {
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "bash"
+			},
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.black-formatter",
+				"ms-python.isort",
+				"ms-python.flake8",
+				"ms-python.mypy",
+				"ms-python.pylint"
+			]
+		}
+	}
+}

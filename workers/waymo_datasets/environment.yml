@@ -1,0 +1,5 @@
+name: sdc-waymo
+channels:
+  - defaults
+dependencies:
+  - python=3.10

@@ -19,7 +19,7 @@ if not os.path.exists(__LOGGING_DIR__):
     os.makedirs(__LOGGING_DIR__)
 __setup_logger__(log_dir=__LOGGING_DIR__, level=__LOGGING_LEVEL__)
 
-sys.path.append(str(__PATH_ROOT__ / "workers" / "waymo"))
+sys.path.append(str(__PATH_ROOT__ / "workers" / "waymo_datasets"))
 
 from .utils.utils import print_param_table
 from .agroverse.forecasting import AV2Forecasting

@@ -47,7 +47,7 @@ fi
 # Install agro dependencies - https://argoverse.github.io/user-guide/argoverse_2.html
 echo "Installing Argoverse dependencies..."
 if [ -z "$AV2_DIRECTORY" ]; then
-    echo "AV2_DIRECTORY is not set. Please set it in your environment file if you would like to install the dependencies for the SimPan project. Skipping Argoverse dependencies installation..."
+    echo "AV2_DIRECTORY is not set. Please set it in your environment file if you would like to install/setup the Argoverse API. Skipping Argoverse dependencies installation..."
 else
     if [ ! -d "$AV2_DIRECTORY" ]; then
         echo "AV2_DIRECTORY does not exist. Creating directory..."
@@ -68,6 +68,29 @@ else
         cd av2-api && cargo update
     )
     pip install -e $AV2_DIRECTORY/av2-api
+fi
+
+# Install/Setup Waymo Open Dataset
+echo "Installing/Setting up Waymo Open Dataset..."
+if [ -z "$SETUP_WAYMO_OD" ]; then
+    echo "SETUP_WAYMO_OD is not set. Please set it to true in your environment file if you would like to install/setup the waymo open dataset. Skipping Waymo Open Dataset setup..."
+else
+    if [ "$SETUP_WAYMO_OD" = "true" ]; then
+        echo "Setting up Waymo Open Dataset..."
+        (
+            if [ $OS = "Darwin" ]; then
+                echo "Setting up Waymo Open Dataset for $OS..."
+                cd workers/waymo_datasets
+                docker build --platform linux/amd64 -t waymo-open-dataset . 
+            else
+                echo "Setting up Waymo Open Dataset for $OS..."
+                cd workers/waymo_datasets
+                docker build -t waymo-open-dataset . 
+            fi
+        )
+    else
+        echo "SETUP_WAYMO_OD is set to false. Skipping Waymo Open Dataset setup..."
+    fi
 fi
 
 # Install required Python packages

@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
 
@@ -22,9 +22,9 @@ services:
     depends_on:
       - redis
    
-  waymo:
+  waymo-datasets:
     build:
-      context: ./workers/waymo
+      context: ./workers/waymo_datasets
     command: celery -A app worker --loglevel=info -Q waymo_queue
     volumes:
       - ./data:/data:ro

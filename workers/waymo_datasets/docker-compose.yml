@@ -1,0 +1,18 @@
+# This is a docker-compose file for devcontainers to setup the waymo open dataset environment
+# Refer ./.devcontainer/devcontainer.json for more information
+
+version: '3.8'
+
+services:
+  waymo_open_dataset:
+    image: waymo-open-dataset:latest
+    container_name: vscode_waymo_open_dataset
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    command: /bin/bash
+    tty: true
+    stdin_open: true
