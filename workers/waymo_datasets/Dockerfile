@@ -43,3 +43,4 @@ RUN pip install *.whl
 # Setup our workspace
 WORKDIR /app
 COPY . .
+RUN pip install -r requirements.txt

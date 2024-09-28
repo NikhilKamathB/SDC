@@ -5,10 +5,12 @@ version: '3.8'
 
 services:
   waymo_open_dataset:
-    image: waymo-open-dataset:latest
+    image: sdc-waymo-datasets:latest
     container_name: vscode_waymo_open_dataset
     volumes:
       - .:/app
+      - ../../data:/data:ro
+      - ../../data/interim:/data/interim:rw
     working_dir: /app
     environment:
       - PYTHONUNBUFFERED=1

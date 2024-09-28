@@ -38,6 +38,7 @@ services:
     depends_on:
       - redis
       - redis-insight
+    platform: ${DOCKER_PLATFORM:-}
 
   flower:
     image: mher/flower:latest
@@ -52,7 +53,7 @@ services:
     depends_on:
       - redis
       - redis-insight
-      - waymo
+      - waymo-datasets
 
 networks:
   redis-network:
