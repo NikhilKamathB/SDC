@@ -4,3 +4,4 @@
 
 # Ignore all files from downloaded online
 /data/online/
+/data/volumes/

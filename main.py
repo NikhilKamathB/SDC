@@ -404,6 +404,7 @@ def av2_forecasting_query_max_occurrence(
 
 # ------------------------------------------------- Waymo ---------------------------------------------------------------------
 @__waymo_app__.command(name="visualize_waymo_open_motion_data", help="This command visualizes the Waymo open motion dataset - Uses docker to run in a isolated environment.")
+@only_linux
 def visualize_waymo_open_motion_data(
     input_directory: Optional[str] = T.Option(
         "/data/online/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/tf_example", help="The directory containing the Waymo open motion dataset."),
