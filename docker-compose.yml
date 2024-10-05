@@ -1,4 +1,5 @@
-version: '3.8'
+# This is a docker-compose file all workers and sub-services associated with the project.
+
 
 services:
 

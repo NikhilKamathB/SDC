@@ -1,20 +1,39 @@
 # This is a docker-compose file for devcontainers to setup the waymo open dataset environment
 # Refer ./.devcontainer/devcontainer.json for more information
 
-version: '3.8'
-
 services:
-  waymo_open_dataset:
+
+  redis:
+    image: redis:latest
+    container_name: vscode-redis
+    ports:
+      - "6378:6379"
+    volumes:
+      - ../../data/volumes/vscode-redis:/data
+    networks:
+      - vscode-redis-network
+
+  waymo-open-dataset:
     image: sdc-waymo-open-dataset:latest
-    container_name: vscode_waymo_open_dataset
+    container_name: vscode-waymo-open-dataset
     volumes:
       - .:/app
       - ../../data:/data:ro
       - ../../data/interim:/data/interim:rw
+    networks:
+      - vscode-redis-network
     working_dir: /app
     environment:
+      - WAYMO_CELERY_BASE_URL=redis://redis:6379/
+      - WAYMO_CELERY_DATABASE_NUMBER=0
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
     command: /bin/bash
+    depends_on:
+      - redis
     tty: true
     stdin_open: true
+
+networks:
+  vscode-redis-network:
+    driver: bridge

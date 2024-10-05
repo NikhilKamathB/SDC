@@ -407,9 +407,9 @@ def av2_forecasting_query_max_occurrence(
 @only_linux
 def visualize_waymo_open_motion_data(
     input_directory: Optional[str] = T.Option(
-        "/data/online/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/tf_example", help="The directory containing the Waymo open motion dataset."),
+        "/data/online/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/tf_example", help="The directory containing the Waymo open motion dataset. Because this command uses docker to run in a isolated environment, so the input directory is the directory inside the docker container. Refer the docker compose file to know more."),
     output_directory: Optional[str] = T.Option(
-        "/data/interim", help="The directory where the visualization will be stored."),
+        "/data/interim/waymo", help="The directory where the visualization will be stored. Because this command uses docker to run in a isolated environment, so the output directory is the directory inside the docker container. Refer the docker compose file to know more."),
     scenario_id: Optional[str] = T.Option(
         "training_tfexample.tfrecord-00000-of-01000", help="The scenario id for the Waymo open motion dataset."),
     output_filename: Optional[str] = T.Option(

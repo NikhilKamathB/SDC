@@ -40,7 +40,15 @@ RUN cd waymo-open-dataset/src && cp ./bazel-bin/waymo_open_dataset/pip_pkg_scrip
 WORKDIR /pkgs
 RUN pip install *.whl
 
+# Create a new user 'tyche' with the same UID as your host user
+ARG USER_ID=1000
+RUN useradd -m -u ${USER_ID} -s /bin/bash tyche && \
+    echo "tyche ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
 # Setup our workspace
 WORKDIR /app
-COPY . .
+COPY --chown=tyche:tyche . .
 RUN pip install -r requirements.txt
+
+# Switch to the new user - This is necessary to avoid permission issues when editing files in the container from the host machine.
+USER tyche
