@@ -5,6 +5,7 @@ description = "Self-Driving Car codebase"
 authors = ["Nikhil Bola Kamath <nikhilkb98@gmail.com>"]
 readme = "README.md"
 
+
 [tool.poetry.dependencies]
 python = "^3.10"
 networkx = "^3.3"
@@ -26,7 +27,7 @@ opencv-python = "^4.10.0.84"
 kombu = "^5.4.2"
 celery = "^5.4.0"
 redis = "^5.0.8"
-carla = {version = "0.9.15", markers = "platform_system == \"Linux\""}
+carla = {version = "0.9.15", markers = "sys_platform == 'linux'"}
 
 
 [build-system]

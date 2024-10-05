@@ -5,7 +5,7 @@ version: '3.8'
 
 services:
   waymo_open_dataset:
-    image: sdc-waymo-datasets:latest
+    image: sdc-waymo-open-dataset:latest
     container_name: vscode_waymo_open_dataset
     volumes:
       - .:/app
