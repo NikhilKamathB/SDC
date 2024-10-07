@@ -409,11 +409,11 @@ def visualize_waymo_open_motion_data(
     input_directory: Optional[str] = T.Option(
         "/data/online/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/tf_example", help="The directory containing the Waymo open motion dataset. Because this command uses docker to run in a isolated environment, so the input directory is the directory inside the docker container. Refer the docker compose file to know more."),
     output_directory: Optional[str] = T.Option(
-        "/data/interim/waymo", help="The directory where the visualization will be stored. Because this command uses docker to run in a isolated environment, so the output directory is the directory inside the docker container. Refer the docker compose file to know more."),
-    scenario_id: Optional[str] = T.Option(
+        "/data/interim/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/tf_example", help="The directory where the visualization will be stored. Because this command uses docker to run in a isolated environment, so the output directory is the directory inside the docker container. Refer the docker compose file to know more."),
+    scenario: Optional[str] = T.Option(
         "training_tfexample.tfrecord-00000-of-01000", help="The scenario id for the Waymo open motion dataset."),
     output_filename: Optional[str] = T.Option(
-        None, help="The name of the output file with extension."),
+        None, help="The name of the output file without extension."),
 ) -> None:
     # Print the configuration of this function.
     print_param_table(
@@ -423,7 +423,7 @@ def visualize_waymo_open_motion_data(
         _ = WaymoForecasting(
             input_directory=input_directory,
             output_directory=output_directory,
-            scenario_id=scenario_id,
+            scenario=scenario,
             output_filename=output_filename
         ).visualize()
     except Exception as e:

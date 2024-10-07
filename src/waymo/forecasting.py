@@ -25,7 +25,7 @@ class WaymoForecasting:
         logger.info(f"{self.__LOG_PREFIX__}: Initializing Waymo Forecasting.")
         self._input_directory = kwargs.get("input_directory", None)
         self._output_directory = kwargs.get("output_directory", None)
-        self._scenario_id = kwargs.get("scenario_id", None)
+        self._scenario = kwargs.get("scenario", None)
         self._output_filename = kwargs.get("output_filename", None)
     
     def visualize(self):
@@ -40,7 +40,7 @@ class WaymoForecasting:
             kwargs={
                 "input_directory": self._input_directory,
                 "output_directory": self._output_directory,
-                "scenario_id": self._scenario_id,
+                "scenario": self._scenario,
                 "output_filename": self._output_filename
             }
         )

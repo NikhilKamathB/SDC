@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     git \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bazelisk
@@ -41,6 +42,7 @@ WORKDIR /pkgs
 RUN pip install *.whl
 
 # Create a new user 'tyche' with the same UID as your host user
+WORKDIR /
 ARG USER_ID=1000
 RUN useradd -m -u ${USER_ID} -s /bin/bash tyche && \
     echo "tyche ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
