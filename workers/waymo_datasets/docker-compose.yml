@@ -18,6 +18,7 @@ services:
     container_name: vscode-waymo-open-dataset
     volumes:
       - .:/app
+      - ../../logs:/logs
       - ../../data:/data:ro
       - ../../data/interim:/data/interim:rw
     networks:
@@ -26,6 +27,7 @@ services:
     environment:
       - WAYMO_CELERY_BASE_URL=redis://redis:6379/
       - WAYMO_CELERY_DATABASE_NUMBER=0
+      - WAYMO_CELERY_LOG_DIR=/logs
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
     command: /bin/bash

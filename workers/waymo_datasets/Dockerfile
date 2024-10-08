@@ -44,8 +44,7 @@ RUN pip install *.whl
 # Create a new user 'tyche' with the same UID as your host user
 WORKDIR /
 ARG USER_ID=1000
-RUN useradd -m -u ${USER_ID} -s /bin/bash tyche && \
-    echo "tyche ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+RUN useradd -m -u ${USER_ID} -s /bin/bash tyche && echo "tyche ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 # Setup our workspace
 WORKDIR /app

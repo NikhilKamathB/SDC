@@ -28,6 +28,7 @@ services:
       context: ./workers/waymo_datasets
     command: celery -A app worker --loglevel=info -Q waymo_queue
     volumes:
+      - ./logs:/logs
       - ./data:/data:ro
       - ./data/interim:/data/interim:rw
     networks:
@@ -35,6 +36,7 @@ services:
     environment:
       - WAYMO_CELERY_BASE_URL=redis://redis:6379/
       - WAYMO_CELERY_DATABASE_NUMBER=0
+      - WAYMO_CELERY_LOG_DIR=/logs
       - PYTHONPATH=/app
     depends_on:
       - redis
