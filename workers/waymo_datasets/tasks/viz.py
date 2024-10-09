@@ -1,5 +1,7 @@
 #################################################################################################################
 # Vizualization tasks - Waymo specific visualization tasks.
+# Reference:
+#     1. https://github.com/waymo-research/waymo-open-dataset/blob/master/tutorial/tutorial_motion.ipynb
 #################################################################################################################
 
 import os
@@ -13,13 +15,14 @@ from pathlib import Path
 from matplotlib import cm
 from celery import shared_task
 from typing import Tuple, List
+from tasks.base import WaymoBase
 from constants import FEATURES_DESCRIPTION
 
 
 logger = logging.getLogger(__name__)
 
 
-class WaymoOpenMotionDatasetViz:
+class WaymoOpenMotionDatasetViz(WaymoBase):
 
     """
     Define tasks/functionalities associated with Waymo Open Motion Dataset visualization here.
@@ -48,17 +51,6 @@ class WaymoOpenMotionDatasetViz:
         self.animation_interval = kwargs.get("animation_interval", 1000)
         self.save = kwargs.get("save", True)
         self.file_delimiter = "__"
-
-    def _get_scenario_id_from_scenario(self, scenario: str) -> str:
-        """
-        Get scenario ID from scenario.
-        training_tfexample.tfrecord-00000-of-01000 -> training_tfexample__tfrecord-00000-of-01000
-        Input:
-            scenario (str): Scenario.
-        Returns:
-            str: Scenario ID.
-        """
-        return scenario.replace('.', self.file_delimiter)
     
     def _init_visualization(self) -> None:
         """
@@ -67,24 +59,6 @@ class WaymoOpenMotionDatasetViz:
         logger.info(f"{self.__LOG_PREFIX__}: Initializing visualization.")
         self.output_directory = os.path.join(self.output_directory, self._get_scenario_id_from_scenario(self.scenario))
         self._make_output_directory()
-
-    def _get_output_file_path(self, output_filename: str) -> Path:
-        """
-        Get output file path.
-        Args:
-            output_filename (str): Output filename.
-        Returns:
-            Path: Path to the output file.
-        """
-        logger.debug(f"{self.__LOG_PREFIX__}: Getting output file path.")
-        return Path(os.path.join(self.output_directory, output_filename))
-    
-    def _make_output_directory(self) -> None:
-        """
-        Make output directory.
-        """
-        logger.info(f"{self.__LOG_PREFIX__}: Making output directory if not exists.")
-        os.makedirs(self.output_directory, exist_ok=True)
 
     def _create_figure_and_axes(self) -> Tuple[plt.Figure, plt.Axes]:
         """
@@ -387,9 +361,3 @@ class WaymoOpenMotionDatasetViz:
 def viz_waymo_open_dataset_tf_record(*args, **kwargs):
     """Visualize Waymo Open Dataset TFRecord."""
     return WaymoOpenMotionDatasetViz(*args, **kwargs).visualize()
-    
-
-@shared_task(name="test")
-def test():
-    """Test task."""
-    return "Hello, World!"

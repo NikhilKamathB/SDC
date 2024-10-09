@@ -420,12 +420,42 @@ def visualize_waymo_open_motion_data(
         parmas=locals(), title="Parameters for `visualize_waymo_open_motion_data(...)`")
     try:
         # Instantiate and configure the Waymo open motion dataset instance.
-        _ = WaymoForecasting(
+        out = WaymoForecasting(
             input_directory=input_directory,
             output_directory=output_directory,
             scenario=scenario,
             output_filename=output_filename
         ).visualize()
+        __console__.print(f"Output video at: {out}")
+    except Exception as e:
+        logger.error(
+            f"An error occurred while visualizing the Waymo open motion data: {e}")
+        raise e
+
+
+@__waymo_app__.command(name="preprocess_waymo_open_motion_data", help="This command preprocesses the Waymo open motion dataset - Uses docker to run in a isolated environment.")
+@only_linux
+def preprocess_waymo_open_motion_data(
+    input_directory: Optional[str] = T.Option(
+        "/data/online/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/scenario/training", help="The directory containing the Waymo open motion dataset. Because this command uses docker to run in a isolated environment, so the input directory is the directory inside the docker container. Refer the docker compose file to know more."),
+    output_directory: Optional[str] = T.Option(
+        "/data/interim/waymo/waymo_open_dataset_motion_v_1_2_1/uncompressed/scenario/training", help="The directory where the visualization will be stored. Because this command uses docker to run in a isolated environment, so the output directory is the directory inside the docker container. Refer the docker compose file to know more."),
+    scenario: Optional[str] = T.Option(
+        "training.tfrecord-00000-of-01000", help="The scenario id for the Waymo open motion dataset."),
+    output_filename: Optional[str] = T.Option(
+        None, help="The name of the output file without extension."),
+) -> None:
+    # Print the configuration of this function.
+    print_param_table(
+        parmas=locals(), title="Parameters for `preprocess_waymo_open_motion_data(...)`")
+    try:
+        # Instantiate and configure the Waymo open motion dataset instance.
+        _ = WaymoForecasting(
+            input_directory=input_directory,
+            output_directory=output_directory,
+            scenario=scenario,
+            output_filename=output_filename
+        ).preprocess()
     except Exception as e:
         logger.error(
             f"An error occurred while visualizing the Waymo open motion data: {e}")
