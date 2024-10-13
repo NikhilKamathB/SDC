@@ -27,10 +27,13 @@ class WaymoForecasting:
         self._output_directory = kwargs.get("output_directory", None)
         self._scenario = kwargs.get("scenario", None)
         self._output_filename = kwargs.get("output_filename", None)
-    
+        self._generate_json = kwargs.get("generate_json", False)
+        
     def preprocess(self):
         """
         Preprocess the Waymo Open Motion Dataset.
+        Returns:
+            str: The path to the preprocessed Waymo Open Motion Dataset.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Preprocessing Waymo Open Motion Dataset.")
         result = app.send_task(
@@ -41,14 +44,17 @@ class WaymoForecasting:
                 "input_directory": self._input_directory,
                 "output_directory": self._output_directory,
                 "scenario": self._scenario,
-                "output_filename": self._output_filename
+                "output_filename": self._output_filename,
+                "generate_json": self._generate_json
             }
         )
-        print(result.get())
+        return result.get()
     
-    def visualize(self):
+    def visualize(self) -> str:
         """
         Visualize the Waymo Open Motion Dataset.
+        Returns:
+            str: The path to the visualized Waymo Open Motion Dataset.
         """
         logger.info(f"{self.__LOG_PREFIX__}: Visualizing Waymo Open Motion Dataset.")
         result = app.send_task(

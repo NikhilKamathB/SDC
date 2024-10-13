@@ -444,18 +444,22 @@ def preprocess_waymo_open_motion_data(
         "training.tfrecord-00000-of-01000", help="The scenario id for the Waymo open motion dataset."),
     output_filename: Optional[str] = T.Option(
         None, help="The name of the output file without extension."),
+    generate_json: Optional[bool] = T.Option(
+        False, help="Whether to generate the json file or not."),
 ) -> None:
     # Print the configuration of this function.
     print_param_table(
         parmas=locals(), title="Parameters for `preprocess_waymo_open_motion_data(...)`")
     try:
         # Instantiate and configure the Waymo open motion dataset instance.
-        _ = WaymoForecasting(
+        out = WaymoForecasting(
             input_directory=input_directory,
             output_directory=output_directory,
             scenario=scenario,
-            output_filename=output_filename
+            output_filename=output_filename,
+            generate_json=generate_json
         ).preprocess()
+        __console__.print(f"Processed files stored at: {out}")
     except Exception as e:
         logger.error(
             f"An error occurred while visualizing the Waymo open motion data: {e}")
