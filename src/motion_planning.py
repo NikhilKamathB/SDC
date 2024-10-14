@@ -15,8 +15,8 @@ from src.model.enum import DistanceMetric, SearchAlgorithm
 
 try:
     from algorithmslib import algorithms
-except ImportError:
-    raise ImportError("The `algorithmslib` package is not installed. Please install it using `setup.sh` script found at the root of the repository. For more details, refer to the documentation.")
+except ImportError as e:
+    raise ImportError("The `algorithmslib` package is not installed. Please install it using `setup.sh` script found at the root of the repository. For more details, refer to the documentation -> https://sdc-docs.kamath.work/prerequisites-and-setup#miscellaneous. An error occured: {e}")
 
 
 logger = logging.getLogger(__name__)

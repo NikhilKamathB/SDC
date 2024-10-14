@@ -4,7 +4,9 @@
 
 import platform
 import functools
-from typing import Callable
+from rich.live import Live
+from rich.spinner import Spinner
+from typing import Callable, Coroutine
 
 
 def only_linux(func: Callable) -> Callable:
@@ -17,3 +19,9 @@ def only_linux(func: Callable) -> Callable:
             raise OSError("This function can only be called on a Linux system!")
         return func(*args, **kwargs)
     return wrapper
+
+async def display_indefinite_loading_animation(coroutine: Coroutine, spinner_message: str = "Processing...", refresh_per_second: int = 10):
+    spinner = Spinner("dots", text=spinner_message)
+    with Live(spinner, refresh_per_second=refresh_per_second, transient=True) as live:
+        result = await coroutine
+        return result

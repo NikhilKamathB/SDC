@@ -5,19 +5,21 @@
 
 import os
 import glob
+import asyncio
 import logging
+import platform
 import typer as T
 from rich.table import Table
 from dotenv import load_dotenv
 from rich.console import Console
 from typing import Optional, List, TYPE_CHECKING
-from src import AV2Forecasting, WaymoForecasting, print_param_table
-from utils import only_linux
-if TYPE_CHECKING:
+from src import AV2Forecasting, print_param_table
+from utils import only_linux, display_indefinite_loading_animation
+if TYPE_CHECKING or platform.system() == "Linux":
     from src import (
         read_yaml, write_yaml,
-        CarlaClientCLI, DataSynthesizer, HighLevelMotionPlanner, SensorConvertorType,
-        generate_vehicle_config, generate_pedestrian_config, write_txt_report_style_1
+        generate_vehicle_config, generate_pedestrian_config, write_txt_report_style_1,
+        CarlaClientCLI, DataSynthesizer, HighLevelMotionPlanner, SensorConvertorType, WaymoForecasting
     )
 
 
@@ -426,6 +428,7 @@ def visualize_waymo_open_motion_data(
             scenario=scenario,
             output_filename=output_filename
         ).visualize()
+        logger.info(f"Output video at: {out}")
         __console__.print(f"Output video at: {out}")
     except Exception as e:
         logger.error(
@@ -452,13 +455,18 @@ def preprocess_waymo_open_motion_data(
         parmas=locals(), title="Parameters for `preprocess_waymo_open_motion_data(...)`")
     try:
         # Instantiate and configure the Waymo open motion dataset instance.
-        out = WaymoForecasting(
-            input_directory=input_directory,
-            output_directory=output_directory,
-            scenario=scenario,
-            output_filename=output_filename,
-            generate_json=generate_json
-        ).preprocess()
+        out = asyncio.run(
+            display_indefinite_loading_animation(
+                WaymoForecasting(
+                    input_directory=input_directory,
+                    output_directory=output_directory,
+                    scenario=scenario,
+                    generate_json=generate_json
+                ).preprocess(),
+                spinner_message="Processing `preprocess_waymo_open_motion_data`...\n"
+            )
+        )
+        logger.info(f"Processed files stored at: {out}")
         __console__.print(f"Processed files stored at: {out}")
     except Exception as e:
         logger.error(

@@ -23,22 +23,21 @@ sys.path.append(str(__PATH_ROOT__ / "workers" / "waymo_datasets"))
 
 from .utils.utils import print_param_table
 from .agroverse.forecasting import AV2Forecasting
-from .waymo.forecasting import WaymoForecasting
 
 __all__ = [
     "AV2Forecasting",
-    "WaymoForecasting",
     "print_param_table"
 ]
 
 # check if os is linux
-if platform.system == "Linux":
+if platform.system() == "Linux":
     from .base.vehicle import Vehicle
     from .client import CarlaClientCLI
     from .base.walker import Walker, WalkerAI
     from .model.enum import SensorConvertorType
     from .data_synthesizer import DataSynthesizer
     from .model import validators as PydanticModel
+    from .waymo.forecasting import WaymoForecasting
     from .motion_planning import HighLevelMotionPlanner
     from .utils.utils import (
         read_yaml_file as read_yaml,
@@ -50,6 +49,9 @@ if platform.system == "Linux":
     __all__ += [
         "read_yaml",
         "write_yaml",
+        "generate_vehicle_config",
+        "generate_pedestrian_config",
+        "write_txt_report_style_1",
         "PydanticModel",
         "Walker",
         "WalkerAI",
@@ -57,8 +59,6 @@ if platform.system == "Linux":
         "DataSynthesizer",
         "CarlaClientCLI",
         "HighLevelMotionPlanner",
-        "generate_vehicle_config",
-        "generate_pedestrian_config",
-        "write_txt_report_style_1",
-        "SensorConvertorType"
+        "SensorConvertorType",
+        "WaymoForecasting",
     ]

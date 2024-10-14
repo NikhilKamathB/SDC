@@ -29,7 +29,7 @@ class WaymoForecasting:
         self._output_filename = kwargs.get("output_filename", None)
         self._generate_json = kwargs.get("generate_json", False)
         
-    def preprocess(self):
+    async def preprocess(self):
         """
         Preprocess the Waymo Open Motion Dataset.
         Returns:
@@ -50,7 +50,7 @@ class WaymoForecasting:
         )
         return result.get()
     
-    def visualize(self) -> str:
+    async def visualize(self) -> str:
         """
         Visualize the Waymo Open Motion Dataset.
         Returns:

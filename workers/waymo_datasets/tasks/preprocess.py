@@ -166,7 +166,7 @@ class WaymoOpenMotionDatasetPreprocess(WaymoBase):
                 cur_polyline = np.concatenate((cur_polyline[:, 0:3], cur_polyline_dir, cur_polyline[:, 3:]), axis=-1)
                 map_infos["road_line"].append(cur_info)
             else:
-                logger.warning(f"{self.__LOG_PREFIX__}: Unknown map feature - {cur_data}")
+                logger.warning(f"{self.__LOG_PREFIX__}: Unknown map feature with id - {cur_data.id}")
             polylines.append(cur_polyline)
             cur_info["polyline_index"] = (point_cnt, point_cnt + len(cur_polyline))
             point_cnt += len(cur_polyline)
