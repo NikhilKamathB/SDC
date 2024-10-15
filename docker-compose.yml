@@ -1,6 +1,5 @@
 # This is a docker-compose file all workers and sub-services associated with the project.
 
-
 services:
 
   redis:
@@ -26,7 +25,7 @@ services:
   waymo-open-dataset:
     build:
       context: ./workers/waymo_datasets
-    command: celery -A app worker --loglevel=info -Q waymo_queue
+    command: celery -A app worker --concurrency=2 --loglevel=info -Q waymo_queue
     volumes:
       - ./logs:/logs
       - ./data:/data:ro
@@ -41,6 +40,13 @@ services:
     depends_on:
       - redis
       - redis-insight
+    deploy:
+      replicas: '2'
+      resources:
+        limits:
+          cpus: '2'
+        reservations:
+          cpus: '1'
     platform: ${DOCKER_PLATFORM:-}
 
   flower:

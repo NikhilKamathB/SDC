@@ -358,6 +358,6 @@ class WaymoOpenMotionDatasetViz(WaymoBase):
 
 
 @shared_task(name="viz.waymo_open_motion_dataset")
-def viz_waymo_open_dataset_tf_record(*args, **kwargs):
+def viz_waymo_open_motion_dataset_tf_record(*args, **kwargs):
     """Visualize Waymo Open Dataset TFRecord."""
     return WaymoOpenMotionDatasetViz(*args, **kwargs).visualize()

@@ -5,12 +5,16 @@
 #################################################################################################################
 
 import os
+import glob
 import logging
 import numpy as np
 import tensorflow as tf
-from celery import shared_task
+from functools import partial
 from typing import List, Dict, Any
+from celery.result import GroupResult
+from celery import shared_task, group
 from waymo_open_dataset.protos import scenario_pb2
+import config
 from tasks.base import WaymoBase
 from validators import ScenarioBaseModel, ScenarioInstanceBaseModel
 from constants import OBJECT_TYPE, LANE_TYPE, ROAD_LINE_TYPE, POLYLINE_TYPE, ROAD_EDGE_TYPE, SIGNAL_STATE, A_MIN, A_MAX
@@ -37,11 +41,9 @@ class WaymoOpenMotionDatasetPreprocess(WaymoBase):
         assert self.input_directory is not None, "Input directory not provided."
         assert self.output_directory is not None, "Output directory not provided."
         self.scenario = kwargs.get("scenario", None)
-        self.output_filename = kwargs.get("output_filename", None)
-        self.file_delimiter = kwargs.get("file_delimiter", "__")
-        self.output_directory = os.path.join(self.output_directory, self._get_scenario_id_from_scenario(self.scenario))
         self.generate_json = kwargs.get("generate_json", False)
-        self._make_output_directory()
+        self.process_k = kwargs.get("process_k", 4)
+        self.file_delimiter = kwargs.get("file_delimiter", "__")
     
     def _get_polyline_dir(self, polyline: np.ndarray) -> np.ndarray:
         """
@@ -202,7 +204,7 @@ class WaymoOpenMotionDatasetPreprocess(WaymoBase):
             dynamic_map_infos["state"].append(np.array([state]))
             dynamic_map_infos["stop_point"].append(np.array([stop_point]))
         return dynamic_map_infos
-
+    
     def process_scenario_proto(self, scenario_proto_path: str) -> str:
         """
         Process a scenario proto file and return a list of dictionaries containing the scenario information.
@@ -213,6 +215,9 @@ class WaymoOpenMotionDatasetPreprocess(WaymoBase):
         """
         logger.info(f"{self.__LOG_PREFIX__}: Processing scenario proto file - {scenario_proto_path}")
         dataset = tf.data.TFRecordDataset(scenario_proto_path, compression_type="")
+        scenario_name = scenario_proto_path.split("/")[-1]
+        output_directory = os.path.join(self.output_directory, self._get_scenario_id_from_scenario(scenario_name))
+        self._make_output_directory(output_directory)
         pydantic_scenario_infos = []
         for ctr, data in enumerate(dataset):
             try:
@@ -241,29 +246,67 @@ class WaymoOpenMotionDatasetPreprocess(WaymoBase):
                 }
                 pydantic_info.update(info)
                 pydantic_info = ScenarioInstanceBaseModel(**pydantic_info)
-                pickle_path = self._get_output_file_path(f"{info['scenario_id']}.pkl")
+                pickle_path = self._get_output_file_path(f"{info['scenario_id']}.pkl", output_directory)
                 pydantic_info.save_pickle(pickle_path)
                 if self.generate_json:
-                    json_path = self._get_output_file_path(f"{info['scenario_id']}.json")
+                    json_path = self._get_output_file_path(f"{info['scenario_id']}.json", output_directory)
                     pydantic_info.save_json(json_path)
                 pydantic_scenario_infos.append(pydantic_info)
             except Exception as e:
                 logger.error(f"{self.__LOG_PREFIX__}: Error processing scenario proto at {scenario_proto_path} - {ctr} with: {str(e)}")
         pydantic_scenario = ScenarioBaseModel(scenarios=pydantic_scenario_infos)
-        return self.output_directory
+        return output_directory
     
-    def process(self) -> str:
+    def process(self, scenario_proto_path: str) -> str:
         """
-        Process the scenario proto files.
+        Process all scenario proto files in the input directory.
+        Input:
+            scenario_proto_path: str - path to the scenario proto file.
         Returns:
             output_directory: str - path to the output directory containing the processed scenario information.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Processing scenario proto file - {self.scenario}")
-        scenario_proto_path = os.path.join(self.input_directory, self.scenario)
+        logger.info(f"{self.__LOG_PREFIX__}: Processing scenario proto file from {scenario_proto_path}.")
         output_directory = self.process_scenario_proto(scenario_proto_path)
         return output_directory
+    
+    @staticmethod
+    def get_scenario_files(input_directory: str, process_k: int = -1, logging_pfx: str = "get_scenario_files") -> List[str]:
+        """
+        Get the scenario files in the input directory.
+        Input:
+            input_directory: str - path to the input directory.
+            process_k: int - number of scenario files to process.
+            logging_pfx: str - logging prefix.
+        Returns:
+            scenario_files: List[str] - list of scenario files.
+        """
+        assert input_directory is not None, "Input directory not provided."
+        logger.info(f"{logging_pfx} | STATIC Class Method: Getting scenario files.")
+        scenario_files = glob.glob(os.path.join(input_directory, "*.tfrecord*"))
+        scenario_files.sort()
+        if process_k < 0: return scenario_files
+        return scenario_files[:process_k]
+
+
+@shared_task(name="preprocess.waymo_open_motion_dataset_single_file")
+def preprocess_waymo_open_motion_dataset_tf_record_single_file(scenario_proto_path: str, *args, **kwargs) -> str:
+    """Preprocess Waymo Open Dataset TFRecord."""
+    preprocessor = WaymoOpenMotionDatasetPreprocess(*args, **kwargs)
+    return preprocessor.process(scenario_proto_path=scenario_proto_path)
 
 @shared_task(name="preprocess.waymo_open_motion_dataset")
-def preprocess_waymo_open_dataset_tf_record(*args, **kwargs):
+def preprocess_waymo_open_motion_dataset_tf_record(apply_async: bool = False, *args, **kwargs) -> List[str]:
     """Preprocess Waymo Open Dataset TFRecord."""
-    return WaymoOpenMotionDatasetPreprocess(*args, **kwargs).process()
+    scenario_files = WaymoOpenMotionDatasetPreprocess.get_scenario_files(
+        input_directory=kwargs.get("input_directory", None),
+        process_k=kwargs.get("process_k", -1),
+        logging_pfx=WaymoOpenMotionDatasetPreprocess.__LOG_PREFIX__
+    )
+    tasks = group([
+        preprocess_waymo_open_motion_dataset_tf_record_single_file.s(scenario_proto_path=cur_file, *args, **kwargs) for cur_file in scenario_files
+    ])
+    if apply_async:
+        result = tasks.apply_async(queue=config.QUEUE_NAME)
+        return kwargs.get("output_directory", None)
+    result = tasks.apply(queue=config.QUEUE_NAME)
+    return [r.result for r in result.results]

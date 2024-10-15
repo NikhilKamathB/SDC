@@ -9,7 +9,7 @@ from kombu import Exchange, Queue
 
 
 APP_NAME = "waymo"
-_queue_name = f"{APP_NAME}_queue"
+QUEUE_NAME = f"{APP_NAME}_queue"
 _exchange_name = f"{APP_NAME}_tasks"
 _routing_key = f"{APP_NAME}_tasks"
 
@@ -19,7 +19,7 @@ broker_url = f"{base_url}{database_number}"
 result_backend = f"{base_url}{database_number}"
 task_queues = (
     Queue(
-        _queue_name,
+        QUEUE_NAME,
         exchange=Exchange(_exchange_name, type="direct"),
         routing_key=_routing_key
     ),

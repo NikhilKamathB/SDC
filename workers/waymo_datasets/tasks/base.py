@@ -18,23 +18,37 @@ class WaymoBase:
 
     __LOG_PREFIX__ = "WaymoBase"
 
-    def _get_output_file_path(self, output_filename: str) -> Path:
+    def _get_output_directory(self, output_directory: str = None) -> str:
+        """
+        Get output directory.
+        Args:
+            output_directory (str): Output directory.
+        Returns:
+            str: Output directory.
+        """
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting output directory.")
+        return output_directory if output_directory is not None else self.output_directory
+
+    def _get_output_file_path(self, output_filename: str, output_directory: str = None) -> Path:
         """
         Get output file path.
         Args:
             output_filename (str): Output filename.
+            output_directory (str): Output directory.
         Returns:
             Path: Path to the output file.
         """
         logger.debug(f"{self.__LOG_PREFIX__}: Getting output file path.")
-        return Path(os.path.join(self.output_directory, output_filename))
+        return Path(os.path.join(self._get_output_directory(output_directory), output_filename))
     
-    def _make_output_directory(self) -> None:
+    def _make_output_directory(self, output_directory: str = None) -> None:
         """
         Make output directory.
+        Args:
+            output_directory (str): Output directory.
         """
-        logger.info(f"{self.__LOG_PREFIX__}: Making output directory if not exists.")
-        os.makedirs(self.output_directory, exist_ok=True)
+        logger.debug(f"{self.__LOG_PREFIX__}: Making output directory if not exists.")
+        os.makedirs(self._get_output_directory(output_directory), exist_ok=True)
     
     def _get_scenario_id_from_scenario(self, scenario: str) -> str:
         """
@@ -45,5 +59,6 @@ class WaymoBase:
         Returns:
             str: Scenario ID.
         """
+        logger.debug(f"{self.__LOG_PREFIX__}: Getting scenario ID from scenario.")
         return scenario.replace('.', self.file_delimiter)
         

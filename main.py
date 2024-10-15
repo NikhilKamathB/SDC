@@ -422,12 +422,17 @@ def visualize_waymo_open_motion_data(
         parmas=locals(), title="Parameters for `visualize_waymo_open_motion_data(...)`")
     try:
         # Instantiate and configure the Waymo open motion dataset instance.
-        out = WaymoForecasting(
-            input_directory=input_directory,
-            output_directory=output_directory,
-            scenario=scenario,
-            output_filename=output_filename
-        ).visualize()
+        out = asyncio.run(
+            display_indefinite_loading_animation(
+                WaymoForecasting(
+                    input_directory=input_directory,
+                    output_directory=output_directory,
+                    scenario=scenario,
+                    output_filename=output_filename
+                ).visualize(),
+                spinner_message="Processing `visualize_waymo_open_motion_data`...\n"
+            )
+        )
         logger.info(f"Output video at: {out}")
         __console__.print(f"Output video at: {out}")
     except Exception as e:
@@ -449,6 +454,12 @@ def preprocess_waymo_open_motion_data(
         None, help="The name of the output file without extension."),
     generate_json: Optional[bool] = T.Option(
         False, help="Whether to generate the json file or not."),
+    bulk: Optional[bool] = T.Option(
+        True, help="Whether to process all the scenarios or not."),
+    apply_async: Optional[bool] = T.Option(
+        True, help="Whether to apply the task asynchronously or not."),
+    process_k: Optional[int] = T.Option(
+        4, help="The number of scenarios to be processed."),
 ) -> None:
     # Print the configuration of this function.
     print_param_table(
@@ -461,13 +472,20 @@ def preprocess_waymo_open_motion_data(
                     input_directory=input_directory,
                     output_directory=output_directory,
                     scenario=scenario,
-                    generate_json=generate_json
+                    generate_json=generate_json,
+                    bulk=bulk,
+                    apply_async=apply_async,
+                    process_k=process_k
                 ).preprocess(),
                 spinner_message="Processing `preprocess_waymo_open_motion_data`...\n"
             )
         )
-        logger.info(f"Processed files stored at: {out}")
-        __console__.print(f"Processed files stored at: {out}")
+        if apply_async:
+            logger.info(f"Applied Async - You can come back later to get updates. To keep track of progress check `host:5555`. Processed files will be stored at: {output_directory}")
+            __console__.print(f"Applied Async - You can come back later to get updates. To keep track of progress check `host:5555`. Processed files will be stored at: {output_directory}")
+        else:
+            logger.info(f"Processed files stored at: {out}")
+            __console__.print(f"Processed files stored at: {out}")
     except Exception as e:
         logger.error(
             f"An error occurred while visualizing the Waymo open motion data: {e}")

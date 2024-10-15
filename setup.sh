@@ -8,9 +8,8 @@
 # 1. Clear the logs.
 # 2. Update the DVC components.
 # 3. Install the Argoverse dependencies.
-# 4. Setup the Waymo Open Dataset.
-# 5. Install required Python packages.
-# 6. Update the git submodules.
+# 4. Install required Python packages.
+# 5. Update the git submodules.
 # 6. Build the `algorithms` library.
 # 7. Have services up and running using docker compose.
 
@@ -70,29 +69,6 @@ else
         cd av2-api && cargo update
     )
     pip install -e $AV2_DIRECTORY/av2-api
-fi
-
-# Install/Setup Waymo Open Dataset
-echo "Installing/Setting up Waymo Open Dataset..."
-if [ -z "$SETUP_WAYMO_OD" ]; then
-    echo "-- SETUP_WAYMO_OD is not set. Please set it to true in your environment file if you would like to install/setup the waymo open dataset. Skipping Waymo Open Dataset setup..."
-else
-    if [ "$SETUP_WAYMO_OD" = "true" ]; then
-        echo "-- Setting up Waymo Open Dataset..."
-        (
-            if [ $OS = "Darwin" ]; then
-                echo "Setting up Waymo Open Dataset for $OS..."
-                cd workers/waymo_datasets
-                docker build -- platform linux/amd64 -t sdc-waymo-open-dataset . 
-            else
-                echo "Setting up Waymo Open Dataset for $OS..."
-                cd workers/waymo_datasets
-                docker build -t sdc-waymo-open-dataset . 
-            fi
-        )
-    else
-        echo "-- SETUP_WAYMO_OD is set to false. Skipping Waymo Open Dataset setup..."
-    fi
 fi
 
 # Install required Python packages
