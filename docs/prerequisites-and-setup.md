@@ -21,6 +21,7 @@ Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/)
 ## 🧰 Setup 1
 
 * Have accounts setup in GitHub and GitLab to access all modules required.
+* Install Docker, `C++` Compiler and `CMake`.
 * If you intend to have the Carla Simulator setup,  you will need the following:
   * Make sure you have Iinstalled Nvidia Drivers
   * For this project, we will have the Carla server up via the docker. To run Carla on docker, refer [this](https://carla.readthedocs.io/en/latest/build\_docker/) doc. Remember to install [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
@@ -28,8 +29,6 @@ Refer to the [Carla simulator document](https://carla.readthedocs.io/en/stable/)
     </strong>
     docker run --rm -it -d --privileged --gpus all --net=host --name carla-server carlasim/carla:&#x3C;tag> /bin/bash ./CarlaUE4.sh -RenderOffScreen
     </code></pre>
-* Install `C++` compiler
-* Install `CMake`
 * Have a python environment created and activate it.&#x20;
 * In this project we will be making use of Argoverse datasets and their utilities. Refer the [Agroverse guide](https://argoverse.github.io/user-guide/argoverse\_2.html) for a deeper dive. As per their instructions ([downloading the ave package](https://argoverse.github.io/user-guide/getting\_started.html#installing-via-pip)), we will be install Rust. You may install Rust from [here](https://www.rust-lang.org/tools/install). Once you have installed Rust, switch to the nightly build of Rust as per the [Agroverse installation guide](https://argoverse.github.io/user-guide/getting\_started.html#installing-via-pip) by running `rustup default nightly`.&#x20;
 
@@ -39,22 +38,20 @@ This step has to be executed using the `./setup.sh` script that can be found at 
 
 1. Clearing logs
 2. Updates the DVC components
-3. Installs required Python packages
-4. Installs the Argoverse dependencies
-5. Updates the git submodules
-6. Builds the \`[Algorithms](https://github.com/NikhilKamathB/Algorithms)\` library
+3. Installs the Argoverse dependencies
+4. Installs required Python packages
+5. Update the git submodules.
+6. Builds the \`[Algorithms](https://github.com/NikhilKamathB/Algorithms)\` library.
+7. Have services up and running using docker compose.
 
 * For this to work you have to set the following environment variables:
-
-```
-CLEAR_LOGS=<BOOL>        # enable clearing longs
-UPDATE_DVC_CONFIG=<BOOL>        # enable dvc update
-DVC_DATA_PATH=<PATH_TO_DVC_LOCAL_STORAGE>         # Section 2
-INSTALL_SIMPAN_DEPENDENCIES=<BOOL>        # whether to install dependencies associated with "SimPan" project or not - Section 3
-AV2_DIRECTORY=<PATH_TO_STORE_AGROVERSE_PROJECT>        # Section 4
-```
-
-* Note - You may skip the dedicated sections in the bash script by not providing the corresponding environment variables.
+  * `CLEAR_LOGS = <bool` - enables log clearing
+  * `UPDATE_DVC_CONFIG = <bool>` - enables DVC config update
+  * `DVC_DATA_PATH = <str>` - Path to DVC config
+  * `AV2_DIRECTORY = <str>` - Agroverse editable/package path
+  * `WAYMO_CELERY_BASE_URL = <str>` - Celery base URL for Waymo worker
+  * `WAYMO_CELERY_DATABASE_NUMBER = <str>` - Celery database number for Waymo worker
+  * `WAYMO_CELERY_LOG_DIR = <str>` - Celery logging directory path
 * With your environment activated, run
 
 ```
@@ -89,6 +86,9 @@ export UPDATE_DVC_CONFIG=<BOOL>
 export DVC_DATA_PATH="<PATH_TO_DVC_LOCAL_STORAGE>"
 export INSTALL_SIMPAN_DEPENDENCIES=<BOOL>
 export AV2_DIRECTORY="<PATH_TO_STORE_AGROVERSE_PROJECT>"
+export WAYMO_CELERY_BASE_URL="<WAYMO_CELERY_BROKER_URL>"
+export WAYMO_CELERY_DATABASE_NUMBER="<DB_NUMBER>"
+export WAYMO_CELERY_LOG_DIR="<WAYMO_CELERY_LOGGING_DIR>"
 ```
 
 ## 🧱 Folder Structure
@@ -105,6 +105,7 @@ SDC Repo.
 |- logs (logging of information will be done here; logging must be in the following format `log_<timestamp>.<extension>`)
 |- src (driving code goes)
     |- agroverse (contains agroverse specefic code)
+    |- waymo (container waymo specefic code)
     |- base (holds the definition of handlers like actors, ego vehivles, maps, etc)
     |- model (contains pydantic and enums models that define attributes for the enviroment)
     |- uitls (untilities are defined here)
@@ -113,6 +114,7 @@ SDC Repo.
     |- motion_planning.py (script for motionl planning for our ego vehicle)
 |- test (all test cases are defined here)
 |- third_party (contains git submodules)
+|- workers (contains workers for executing isolated tasks)
 |- main.py (contains the driver code)
 |- utils.py (utilities for the `main.py` file)
 |- setup.sh (bash script to setup the project)
