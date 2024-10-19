@@ -7,9 +7,8 @@
 # This script will:
 # 1. Clear the logs.
 # 2. Update the DVC components.
-# 3. Install the Argoverse dependencies.
-# 4. Install required Python packages.
-# 5. Update the git submodules.
+# 3. Install required Python packages.
+# 4. Update the git submodules.
 # 6. Build the `algorithms` library.
 # 7. Have services up and running using docker compose.
 
@@ -45,39 +44,13 @@ else
     fi
 fi
 
-# Install agro dependencies - https://argoverse.github.io/user-guide/argoverse_2.html
-echo "Installing Argoverse dependencies..."
-if [ -z "$AV2_DIRECTORY" ]; then
-    echo "-- AV2_DIRECTORY is not set. Please set it in your environment file if you would like to install/setup the Argoverse API. Skipping Argoverse dependencies installation..."
-else
-    if [ ! -d "$AV2_DIRECTORY" ]; then
-        echo "-- AV2_DIRECTORY does not exist. Creating directory..."
-        mkdir -p $AV2_DIRECTORY
-    fi
-    (
-        cd $AV2_DIRECTORY
-        if [ ! -d "av2-api" ]; then
-            echo "-- Cloning Argoverse API repository..."
-            git clone git@github.com:argoverse/av2-api.git
-        else
-            echo "-- Argoverse API repository already exists. Pulling latest changes..."
-            (
-                cd av2-api
-                git pull
-            )
-        fi
-        cd av2-api && cargo update
-    )
-    pip install -e $AV2_DIRECTORY/av2-api
-fi
-
 # Install required Python packages
 echo "Installing required Python packages..."
 poetry install
 
 # Update git submodules
 echo "Initializing/Updating git submodules..."
-git submodule update -- init -- recursive
+git submodule update --init --recursive
 
 # Setup `algorithms` library
 echo "Setting up \`algorithms\` library..."
@@ -93,9 +66,8 @@ mkdir algorithmslib
 echo "Starting services using docker compose..."
 docker compose down
 if [ $OS = "Darwin" ]; then
-    export DOCKER_PLATFORM=linux/amd64
+    docker compose up -d --build
 else
-    unset DOCKER_PLATFORM
+    docker compose up --profile linux -d --build
 fi
-docker compose up -d --build
 docker system prune -f

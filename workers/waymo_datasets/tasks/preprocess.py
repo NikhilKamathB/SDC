@@ -9,15 +9,13 @@ import glob
 import logging
 import numpy as np
 import tensorflow as tf
-from functools import partial
 from typing import List, Dict, Any
-from celery.result import GroupResult
 from celery import shared_task, group
 from waymo_open_dataset.protos import scenario_pb2
 import config
-from tasks.base import WaymoBase
-from validators import ScenarioBaseModel, ScenarioInstanceBaseModel
-from constants import OBJECT_TYPE, LANE_TYPE, ROAD_LINE_TYPE, POLYLINE_TYPE, ROAD_EDGE_TYPE, SIGNAL_STATE, A_MIN, A_MAX
+from tasks.src.base import WaymoBase
+from tasks.src.validators import ScenarioBaseModel, ScenarioInstanceBaseModel
+from tasks.src.constants import OBJECT_TYPE, LANE_TYPE, ROAD_LINE_TYPE, POLYLINE_TYPE, ROAD_EDGE_TYPE, SIGNAL_STATE, A_MIN, A_MAX
 
 
 logger = logging.getLogger(__name__)

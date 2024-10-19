@@ -11,12 +11,11 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from pathlib import Path
 from matplotlib import cm
 from celery import shared_task
 from typing import Tuple, List
-from tasks.base import WaymoBase
-from constants import FEATURES_DESCRIPTION
+from tasks.src.base import WaymoBase
+from tasks.src.constants import FEATURES_DESCRIPTION
 
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-# This is a stand-alone docker compose file for testing/trying Waymo open motion dataset.
+# This is a stand-alone docker compose file for testing/trying Agroverse Dataset - AV2.
 # To use this simply run `docker-compose up` and attach the container to your editor.
 
 services:
@@ -13,9 +13,9 @@ services:
     networks:
       - vscode-redis-network
 
-  waymo-open-dataset:
-    image: sdc-waymo-open-dataset:latest
-    container_name: vscode-waymo-open-dataset
+  av2-open-dataset:
+    image: sdc-av2-dataset:latest
+    container_name: vscode-av2-dataset
     volumes:
       - .:/app
       - ../../logs:/logs
@@ -25,14 +25,20 @@ services:
       - vscode-redis-network
     working_dir: /app
     environment:
-      - WAYMO_CELERY_BASE_URL=redis://redis:6379/
-      - WAYMO_CELERY_DATABASE_NUMBER=0
-      - WAYMO_CELERY_LOG_DIR=/logs
+      - AV2_CELERY_BASE_URL=redis://redis:6379/
+      - AV2_CELERY_DATABASE_NUMBER=0
+      - AV2_CELERY_LOG_DIR=/logs
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
     command: /bin/bash
     depends_on:
       - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+        reservations:
+          cpus: '1'
     tty: true
     stdin_open: true
 

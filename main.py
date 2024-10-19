@@ -296,18 +296,18 @@ def generate_route(
 # -----------------------------------------------------------------------------------------------------------------------------
 
 # ------------------------------------------------- AGROVERSE -----------------------------------------------------------------
-@__agroverse_app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data.")
+@__agroverse_app__.command(name="visualize_agroverse_data", help="This command visualizes the Agroverse forecasting data - Uses docker to run in a isolated environment.")
 def visualize_agroverse_forecasting_data(
     input_directory: Optional[str] = T.Option(
-        "./data/online/av2/train", help="The directory containing the Agroverse forecasting data instance."),
+        "/data/online/av2/train", help="The directory containing the Agroverse forecasting data instance. Because this command uses docker to run in a isolated environment, so the input directory is the directory inside the docker container. Refer the docker compose file to know more."),
     output_directory: Optional[str] = T.Option(
-        "./data/interim", help="The directory where the visualization will be stored."),
+        "/data/interim/av2/train", help="The directory where the visualization will be stored. Because this command uses docker to run in a isolated environment, so the output directory is the directory inside the docker container. Refer the docker compose file to know more."),
     scenario_id: Optional[str] = T.Option(
         "0000b0f9-99f9-4a1f-a231-5be9e4c523f7", help="The scenario id for the Agroverse forecasting data instance."),
     output_filename: Optional[str] = T.Option(
         None, help="The name of the output file with extension."),
     vechile_config_path: Optional[str] = T.Option(
-        "./data/config/agroverse/vehicle0.yaml", help="The configuration file for the autonomoous vehicle."),
+        "/data/config/agroverse/vehicle0.yaml", help="The configuration file for the autonomoous vehicle. Because this command uses docker to run in a isolated environment, so the vechile config path is the path inside the docker container. Refer the docker compose file to know more."),
     bev_fov_scale: Optional[float] = T.Option(
         5.0, help="The field of view scale for the bird's eye view, centered around the ego vehicle."),
     raw: Optional[bool] = T.Option(
@@ -325,22 +325,26 @@ def visualize_agroverse_forecasting_data(
     print_param_table(
         parmas=locals(), title="Parameters for `visualize_agroverse_forecasting_data(...)`")
     try:
-        # Instantiate and configure the Agroverse forecasting dataset instance.
-        av2_forecasting = AV2Forecasting(
-            input_directory=input_directory,
-            output_directory=output_directory,
-            scenario_id=scenario_id,
-            output_filename=output_filename,
-            av_configuration_path=vechile_config_path,
-            bev_fov_scale=bev_fov_scale,
-            raw=raw,
-            show_pedestrian_xing=show_pedestrian_xing,
-            plot_occlusions=plot_occlusions,
-            codec=codec,
-            fps=fps
+        out = asyncio.run(
+            display_indefinite_loading_animation(
+                AV2Forecasting(
+                    input_directory=input_directory,
+                    output_directory=output_directory,
+                    scenario_id=scenario_id,
+                    output_filename=output_filename,
+                    av_configuration_path=vechile_config_path,
+                    bev_fov_scale=bev_fov_scale,
+                    raw=raw,
+                    show_pedestrian_xing=show_pedestrian_xing,
+                    plot_occlusions=plot_occlusions,
+                    codec=codec,
+                    fps=fps
+                ).visualize(),
+                spinner_message="Processing `visualize_agroverse_forecasting_data`...\n"
+            )
         )
-        # Generate the scenario video for the given scenario id.
-        _ = av2_forecasting.visualize()
+        logger.info(f"Output video at: {out}")
+        __console__.print(f"Output video at: {out}")
     except Exception as e:
         logger.error(
             f"An error occurred while visualizing the Agroverse forecasting data: {e}")
@@ -350,11 +354,13 @@ def visualize_agroverse_forecasting_data(
 @__agroverse_app__.command(name="generate_analytics_agroverse_forecasting_data", help="This command generates analytics for the Agroverse forecasting data.")
 def generate_analytics_agroverse_forecasting_data(
     input_directory: Optional[str] = T.Option(
-        "./data/online/av2/train", help="The directory containing the Agroverse forecasting data instance."),
+        "/data/online/av2/train", help="The directory containing the Agroverse forecasting data instance."),
     output_directory: Optional[str] = T.Option(
-        "./data/interim/csv", help="The directory where the analytics file will be stored."),
+        "/data/interim/av2/train/csv", help="The directory where the analytics file will be stored."),
     output_filename: Optional[str] = T.Option(
         "av2_forecasting_data_analytics.csv", help="The name of the output file with extension."),
+    process_k: Optional[int] = T.Option(
+        -1, help="The number of scenarios to be processed. -1 for all."),
     overwrite: Optional[bool] = T.Option(
         True, help="Whether to overwrite the existing analytics file or not - if it exists."),
 ) -> None:
@@ -363,12 +369,19 @@ def generate_analytics_agroverse_forecasting_data(
         parmas=locals(), title="Parameters for `generate_analytics_agroverse_forecasting_data(...)`")
     try:
         # Instantiate and configure the Agroverse forecasting dataset instance.
-        _ = AV2Forecasting(
-            input_directory=input_directory,
-            output_directory=output_directory,
-            output_filename=output_filename,
-            overwrite=overwrite
-        ).get_analytics()
+        out = asyncio.run(
+            display_indefinite_loading_animation(
+                AV2Forecasting(
+                    input_directory=input_directory,
+                    output_directory=output_directory,
+                    output_filename=output_filename,
+                    overwrite=overwrite
+                ).get_analytics(process_k=process_k),
+                spinner_message="Processing `generate_analytics_agroverse_forecasting_data`...\n"
+            )
+        )
+        logger.info(f"Output analytics file at: {out}")
+        __console__.print(f"Output analytics file at: {out}")
     except Exception as e:
         logger.error(
             f"An error occurred while generating analytics for the Agroverse forecasting data: {e}")
@@ -378,7 +391,7 @@ def generate_analytics_agroverse_forecasting_data(
 @__agroverse_query_app__.command(name="av2_forecasting_query_max_occurrence", help="This command queries the maximum occurrence based on a given object type for the Agroverse forecasting data.")
 def av2_forecasting_query_max_occurrence(
     csv_file: Optional[str] = T.Option(
-        "./data/interim/csv/av2_forecasting_data_analytics.csv", help="The path to the csv analytics file."),
+        "/data/interim/av2/train/csv/av2_forecasting_data_analytics.csv", help="The path to the csv analytics file."),
     object_type: Optional[str] = T.Option(
         "pedestrian", help="The object type for which the maximum occurrence is to be queried - [pedestrian, cyclist, motorcyclist, vehicle, bus]."),
     top_k: Optional[int] = T.Option(
@@ -390,12 +403,15 @@ def av2_forecasting_query_max_occurrence(
     print_param_table(
         parmas=locals(), title="Parameters for `av2_forecasting_query_max_occurrence(...)`")
     try:
-        # Instantiate and configure the Agroverse forecasting dataset instance.
-        df, _ = AV2Forecasting.query_max_occurrence(csv_file=csv_file, object_type=object_type, top_k=top_k, save=save)
-        __console__.print(f"List of scenarios for the given query:\n{df['scenario_id'].tolist()}")
-        table = Table(*df.columns.tolist())
-        for _, row in df.iterrows():
-            table.add_row(*[str(item) for item in row.tolist()])
+        out = asyncio.run(
+            display_indefinite_loading_animation(
+                AV2Forecasting.query_max_occurrence(csv_file=csv_file, object_type=object_type, top_k=top_k, save=save),
+                spinner_message="Processing `av2_forecasting_query_max_occurrence`...\n"
+            )
+        )
+        table = Table(*out["columns"])
+        for row in out["data"]:
+            table.add_row(*[str(v) for v in row.values()])
         __console__.print(table)
     except Exception as e:
         logger.error(

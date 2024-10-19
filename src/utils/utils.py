@@ -3,15 +3,12 @@
 ###################################################################################################
 
 import os
-import cv2
 import yaml
-import copy
 import string
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from PIL import Image
 from rich.table import Table
 from rich.console import Console
 from collections import defaultdict
@@ -316,79 +313,3 @@ def plot_3d_roads(road1: Tuple[np.ndarray, np.ndarray], road2: Tuple[np.ndarray,
         ax.set_zlabel(axis_labels[2])
     fig.suptitle(title)
     plt.show()
-
-def write_video(frames: List[Image.Image], video_path: str, codec: str = "mpv4", fps: int = 10, cvt_RGB2BGR: bool = True) -> str:
-    """
-    Given a list of frames, write a video.
-    Input parameters:
-        - frames: List[Image.Image] - the list of frames.
-        - video_path: str - the path of the video.
-        - codec: str - the codec to be used for the video.
-        - fps: int - the frames per second.
-        - cvt_RGB2BGR: bool - whether to convert RGB to BGR or not.
-    Output:
-        - str: the path of the video.
-    """
-    fourcc = cv2.VideoWriter_fourcc(*codec)
-    frame_size = frames[0].size
-    out = cv2.VideoWriter(video_path, fourcc, fps=fps, frameSize=frame_size)
-    for frame in frames:
-        _frame = np.array(copy.deepcopy(frame))
-        if cvt_RGB2BGR:
-            _frame = cv2.cvtColor(_frame, cv2.COLOR_RGB2BGR)
-        out.write(_frame)
-    out.release()
-    return video_path
-
-def bilinear_interpolate(patch: np.ndarray, x_frac: float = 1.0, y_frac: float = 1.0) -> np.ndarray:
-    """
-    Perform bilinear interpolation on the patch.
-    Input parameters:
-        - patch: np.ndarray - the patch to be interpolated - format: Bottom Left, Bottom Right, Top Right, Top Left -> [[x1, y1], [x2, y2], [x3, y3], [x4, y4]].
-        - x_frac: float - the fraction in x-direction.
-        - y_frac: float - the fraction in y-direction.
-    Output:
-        - np.ndarray: the interpolated point.
-    """
-    lb, rb, rt, lt = patch
-    # Interpolate horizontally
-    x_interp_bh, y_interp_bh = (
-        lb[0] + x_frac * (rb[0] - lb[0]),
-        lb[1] + x_frac * (rb[1] - lb[1])
-    )
-    x_interp_th, y_interp_th = (
-        lt[0] + x_frac * (rt[0] - lt[0]),
-        lt[1] + x_frac * (rt[1] - lt[1])
-    )
-    # Interpolate vertically
-    x_interpolated, y_interpolated = (
-        x_interp_bh + y_frac * (x_interp_th - x_interp_bh),
-        y_interp_bh + y_frac * (y_interp_th - y_interp_bh)
-    )
-    return np.array([x_interpolated, y_interpolated])
-
-def compute_total_distance(points: np.ndarray) -> Tuple[float, np.ndarray]:
-    """
-    Compute the total distance spanned by the points.
-    Input parameters:
-        - points: np.ndarray - the points.
-    Output:
-        - Tuple[float, np.ndarray]: the total distance and the distance between each point.
-    """
-    diff = np.diff(points, axis=0)
-    distance = np.linalg.norm(diff, axis=1)
-    return np.sum(distance), distance
-
-def compute_average_velocity(points: np.ndarray, velocities: np.ndarray) -> float:
-    """
-    Compute the average velocity, give a bunch of points and velocity vectors at those points.
-    Input parameters:
-        - points: np.ndarray - the points.
-        - velocities: np.ndarray - the velocities.
-    Output:
-        - float: the average velocity.
-    """
-    total_distance, distance = compute_total_distance(points)
-    speed = np.linalg.norm(velocities[:-1], axis=1)
-    total_time = np.sum(distance / speed)
-    return total_distance / total_time

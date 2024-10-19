@@ -7,7 +7,7 @@ import numpy as np
 from typing import Tuple, Union
 from av2.utils.typing import NDArrayFloat
 from av2.map.map_api import ArgoverseStaticMap
-from src.agroverse.utils import visualize_map
+from tasks.src.utils import visualize_map
 
 
 logger = logging.getLogger(__name__)
@@ -23,18 +23,18 @@ class AV2Base:
     static_map: ArgoverseStaticMap = None
 
     def _visualize_map(self,
-                    show_pedestrian_xing: bool = False,
-                    drivable_area_alpha: float = 0.5,
-                    drivable_area_color: str = "#7A7A7A",
-                    lane_segment_style: str = '-',
-                    lane_segment_linewidth: float = 1.0,
-                    lane_segment_alpha: float = 0.5,
-                    lane_segment_color: str = "#E0E0E0",
-                    pedestrian_crossing_style: str = '-',
-                    pedestrian_crossing_linewidth: float = 1.0,
-                    pedestrian_crossing_alpha: float = 0.5,
-                    pedestrian_crossing_color: str = "#FF00FF"
-                ) -> None:
+                       show_pedestrian_xing: bool = False,
+                       drivable_area_alpha: float = 0.5,
+                       drivable_area_color: str = "#7A7A7A",
+                       lane_segment_style: str = '-',
+                       lane_segment_linewidth: float = 1.0,
+                       lane_segment_alpha: float = 0.5,
+                       lane_segment_color: str = "#E0E0E0",
+                       pedestrian_crossing_style: str = '-',
+                       pedestrian_crossing_linewidth: float = 1.0,
+                       pedestrian_crossing_alpha: float = 0.5,
+                       pedestrian_crossing_color: str = "#FF00FF"
+                       ) -> None:
         """
         Visualize the static map.
         Args:
@@ -80,7 +80,7 @@ class AV2Base:
         x = ref_location[0] - (location) * np.cos(theta)
         y = ref_location[1] - (location) * np.sin(theta)
         return (x, y)
-    
+
     @classmethod
     def transform_bbox(cls, ref_location: NDArrayFloat, heading: float, bbox_size: Tuple[float, float]) -> Tuple[float, float]:
         """

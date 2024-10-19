@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Union, Dict, Tuple
 from pydantic.functional_validators import AfterValidator
 from av2.datasets.motion_forecasting.data_schema import TrackCategory, ObjectType
-from src.agroverse.constants import CAMERA_TYPE_NAME
+from tasks.src.constants import CAMERA_TYPE_NAME
+
 
 def validate_sensor_location(location: "Location") -> "Location":
     """
@@ -22,6 +23,7 @@ def validate_sensor_location(location: "Location") -> "Location":
     assert 0 <= location.y <= 1, "Location y should be between 0 and 1."
     assert 0 <= location.z <= 1, "Location z should be between 0 and 1."
     return location
+
 
 def validate_camera_fov(fov: float) -> float:
     """
@@ -53,7 +55,7 @@ class Rotation(BaseModel):
     yaw: float = 0.0  # Z-axis
     pitch: float = 0.0  # Y-axis
     roll: float = 0.0  # X-axis
-    
+
     def get_rotation_radians(self) -> List[float]:
         """
         Get the rotation in radians.
@@ -154,7 +156,8 @@ class SensorInformation(BaseModel):
     sensor: Union[InternalSensorMountResponse]
     visible_actor_ids: Optional[List[str]] = []
     covered_actor_ids: Optional[List[str]] = []
-    actor_bbox_collection: Optional[Dict[str, Tuple[np.ndarray, np.ndarray]]] = {}
+    actor_bbox_collection: Optional[Dict[str,
+                                         Tuple[np.ndarray, np.ndarray]]] = {}
     sensor_coverage: Optional[np.ndarray] = np.array([])
     occluded_regions: Optional[List[np.ndarray]] = []
 
@@ -175,7 +178,7 @@ class ActorInformation(BaseModel):
 
 
 class AV2MotionForecastingTimeStep(BaseModel):
-    
+
     """
     Define the architecture for AV2 motion forecasting timestep.
     """

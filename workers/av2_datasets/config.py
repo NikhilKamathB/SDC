@@ -1,5 +1,5 @@
 #################################################################################################################
-# Waymo celery configuration
+# AV2 celery configuration
 #################################################################################################################
 
 import os
@@ -7,13 +7,13 @@ from datetime import datetime
 from kombu import Exchange, Queue
 
 
-APP_NAME = "waymo"
+APP_NAME = "av2"
 QUEUE_NAME = f"{APP_NAME}_queue"
 _exchange_name = f"{APP_NAME}_tasks"
 _routing_key = f"{APP_NAME}_tasks"
 
-base_url = os.getenv('WAYMO_CELERY_BASE_URL', 'redis://redis:6379/')
-database_number = os.getenv('WAYMO_CELERY_DATABASE_NUMBER', '0')
+base_url = os.getenv('AV2_CELERY_BASE_URL', 'redis://redis:6379/')
+database_number = os.getenv('AV2_CELERY_DATABASE_NUMBER', '0')
 broker_url = f"{base_url}{database_number}"
 result_backend = f"{base_url}{database_number}"
 task_queues = (
@@ -24,9 +24,9 @@ task_queues = (
     ),
 )
 
-LOG_DIR = os.getenv("WAYMO_CELERY_LOG_DIR", "/logs")
+LOG_DIR = os.getenv("AV2_CELERY_LOG_DIR", "/logs")
 os.makedirs(LOG_DIR, exist_ok=True)
-LOG_FILE = os.path.join(LOG_DIR, f"{datetime.now().strftime('log_%Y-%m-%d_%H-%M-%S')}_celery_waymo_worker.log")
+LOG_FILE = os.path.join(LOG_DIR, f"{datetime.now().strftime('log_%Y-%m-%d_%H-%M-%S')}_celery_av2_worker.log")
 
 LOGGING = {
     'version': 1,

@@ -34,7 +34,7 @@ class WaymoForecasting:
         self._apply_async = kwargs.get("apply_async", False)
         self._process_k = kwargs.get("process_k", 4)
 
-    async def preprocess(self):
+    async def preprocess(self) -> str:
         """
         Preprocess the Waymo Open Motion Dataset.
         Returns:

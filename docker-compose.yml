@@ -21,7 +21,47 @@ services:
       - redis-network
     depends_on:
       - redis
-   
+  
+  flower:
+    image: mher/flower:latest
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./data/volumes/flower:/data
+    networks:
+      - redis-network
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - redis-insight
+  
+  av2-dataset:
+    build:
+      context: ./workers/av2_datasets
+    command: celery -A app worker --concurrency=2 --loglevel=info -Q av2_queue
+    volumes:
+      - ./logs:/logs
+      - ./data:/data:ro
+      - ./data/interim:/data/interim:rw
+    networks:
+      - redis-network
+    environment:
+      - AV2_CELERY_BASE_URL=redis://redis:6379/
+      - AV2_CELERY_DATABASE_NUMBER=0
+      - AV2_CELERY_LOG_DIR=/logs
+      - PYTHONPATH=/app
+    depends_on:
+      - redis
+      - redis-insight
+      - flower
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+        reservations:
+          cpus: '1'
+
   waymo-open-dataset:
     build:
       context: ./workers/waymo_datasets
@@ -40,6 +80,7 @@ services:
     depends_on:
       - redis
       - redis-insight
+      - flower
     deploy:
       replicas: '2'
       resources:
@@ -47,22 +88,8 @@ services:
           cpus: '2'
         reservations:
           cpus: '1'
-    platform: ${DOCKER_PLATFORM:-}
-
-  flower:
-    image: mher/flower:latest
-    ports:
-      - "5555:5555"
-    volumes:
-      - ./data/volumes/flower:/data
-    networks:
-      - redis-network
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-      - redis-insight
-      - waymo-open-dataset
+    profiles:
+      - linux
 
 networks:
   redis-network:
