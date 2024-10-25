@@ -132,7 +132,7 @@ python -m main waymo_dataset preprocess_waymo_open_motion_data --help
 ## Running Workers Independently
 
 * This projects contains a folder `./workers`. Any task that has to be run in an isolated fashion is defined here. Each worker is executed as a celery job. Setting workers/jobs are taken in the setup script, so there is nothing to be done explicitly.
-* Supposed you want deeper control over these individual workers (while developing, you might have to alter code, test, etc), you can do so by running these workers separately. Every worker has a `Dockerfile` and a `docker-compose.yml` file. `cd` into the corresponding worker directory and build the image  - `docker build -t sdc-av2-dataset .` - and start containers by running `docker compose up`. You can use "Dev Containers" extension in vscode to attach the container continue working as usual.
+* Supposed you want deeper control over these individual workers (while developing, you might have to alter code, test, etc), you can do so by running these workers separately. Every worker has a `Dockerfile` and a `docker-compose.yml` file. `cd` into the corresponding worker directory and build the image  - `docker build -t <image-name> .` - and start containers by running `docker compose up`. Note that the image name must match the name of the image declared in the docker compose file. You can use "Dev Containers" extension in vscode to attach the container continue working as usual.
 
 ## Knowing how the workers are doing
 
