@@ -66,8 +66,8 @@ mkdir algorithmslib
 echo "Starting services using docker compose..."
 docker compose down
 if [ $OS = "Darwin" ]; then
-    docker compose up -d --build
+    docker compose up -d --build # Use this for MacOS
 else
-    docker compose up --profile linux -d --build
+    docker compose up --profile linux -d --build # Use this for Linux
 fi
 docker system prune -f

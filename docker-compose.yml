@@ -39,7 +39,7 @@ services:
   av2-dataset:
     build:
       context: ./workers/av2_datasets
-    command: celery -A app worker --concurrency=2 --loglevel=info -Q av2_queue
+    command: celery -A app worker --loglevel=info -Q av2_queue
     volumes:
       - ./logs:/logs
       - ./data:/data:ro

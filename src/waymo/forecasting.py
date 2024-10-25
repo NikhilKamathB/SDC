@@ -4,7 +4,6 @@
 
 import os
 import logging
-import asyncio
 from workers.waymo_datasets import config
 from workers.waymo_datasets.app import app
 
