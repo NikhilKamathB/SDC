@@ -518,8 +518,8 @@ def hello_world() -> None:
 
 __app__.add_typer(__carla_app__, name="carla", help="Commands for the Carla environment.")
 __app__.add_typer(__motion_planning_app__, name="motion_planning", help="Commands for the motion planning.")
-__app__.add_typer(__waymo_app__, name="waymo", help="Commands for handling Waymo dataset.")
-__app__.add_typer(__agroverse_app__, name="av2", help="Commands for handling Agroverse dataset.")
+__app__.add_typer(__waymo_app__, name="waymo_dataset", help="Commands for handling Waymo dataset.")
+__app__.add_typer(__agroverse_app__, name="av2_dataset", help="Commands for handling Agroverse dataset.")
 __agroverse_app__.add_typer(__agroverse_query_app__, name="query", help="Commands for querying the Agroverse dataset.")
 
 if __name__ == "__main__":
